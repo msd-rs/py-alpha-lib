@@ -1,24 +1,27 @@
 mod context;
+mod cross;
 mod ema;
 mod error;
 mod extremum;
 mod ma;
+mod rank;
 mod series;
 mod skip_nan_window;
+mod sum;
 
 use std::fmt::{Debug, Display};
 
 pub use context::Context;
+pub use cross::*;
 pub use ema::*;
 pub use error::Error;
 pub use extremum::*;
 pub use ma::*;
-use num_traits::Float;
+pub use rank::*;
 pub use series::*;
-mod sum;
 pub use sum::*;
-mod cross;
-pub use cross::*;
+
+pub use num_traits::Float;
 
 #[inline]
 pub fn is_normal<T: Float>(a: &T) -> bool {
