@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, collections::BTreeMap};
+use std::{cell::UnsafeCell, cmp::Ordering, collections::BTreeMap, sync::Arc};
 
 use num_traits::Float;
 use rayon::prelude::*;
@@ -86,15 +86,54 @@ pub fn ta_ts_rank<NumT: Float + Send + Sync>(
   Ok(())
 }
 
+#[derive(Debug, Clone, Copy)]
+struct UnsafePtr<NumT: Float> {
+  ptr: *mut NumT,
+}
+
+impl<NumT: Float> UnsafePtr<NumT> {
+  pub fn new(ptr: *mut NumT) -> Self {
+    UnsafePtr { ptr }
+  }
+
+  pub fn get(&self) -> &mut [NumT] {
+    let slice = unsafe { std::slice::from_raw_parts_mut(self.ptr, 0) };
+    slice
+  }
+}
+
+unsafe impl<NumT: Float> Send for UnsafePtr<NumT> {}
+unsafe impl<NumT: Float> Sync for UnsafePtr<NumT> {}
+
 /// rank by group dim
-pub fn ta_rank(ctx: &Context, r: &mut [f64], input: &[f64], periods: usize) -> Result<(), Error> {
+pub fn ta_rank<NumT: Float + Send + Sync>(
+  ctx: &Context,
+  r: &mut [NumT],
+  input: &[NumT],
+) -> Result<(), Error> {
   if r.len() != input.len() {
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
   if ctx.groups() < 2 {
-    return ta_ts_rank(ctx, r, input, periods);
+    return ta_ts_rank(ctx, r, input, 0);
   }
+
+  let group_size = ctx.chunk_size(r.len()) as usize;
+  let groups = ctx.groups() as usize;
+  let r = UnsafePtr::new(r.as_mut_ptr());
+  (0..group_size).into_par_iter().for_each(|j| {
+    let mut rank_window: Vec<(OrderedFloat<NumT>, usize)> = Vec::new();
+    for i in 0..groups {
+      let idx = j * groups + i;
+      rank_window.push((input[idx].into(), idx));
+    }
+    rank_window.sort_by(|a, b| a.0.cmp(&b.0));
+    let r = r.get();
+    rank_window.iter().enumerate().for_each(|(rank, (_v, i))| {
+      r[*i] = NumT::from(rank + 1).unwrap();
+    });
+  });
 
   Ok(())
 }

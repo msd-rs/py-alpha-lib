@@ -205,6 +205,21 @@ def MA(
     _algo.ma(r, input, periods)
     return r
 
+def RANK(
+  input: np.ndarray | list[np.ndarray]
+) -> np.ndarray | list[np.ndarray]:
+  """
+  rank by group dim
+  """
+  if isinstance(input, list):
+    r = [np.empty_like(x) for x in input]
+    _algo.rank(r, input)
+    return r
+  else:
+    r = np.empty_like(input)
+    _algo.rank(r, input)
+    return r
+
 def RCROSS(
   a: np.ndarray | list[np.ndarray], b: np.ndarray | list[np.ndarray]
 ) -> np.ndarray | list[np.ndarray]:
@@ -315,5 +330,20 @@ def SUMBARS(
   else:
     r = np.empty_like(input)
     _algo.sumbars(r, input, amount)
+    return r
+
+def TS_RANK(
+  input: np.ndarray | list[np.ndarray], periods: int
+) -> np.ndarray | list[np.ndarray]:
+  """
+  rank by ts dim
+  """
+  if isinstance(input, list):
+    r = [np.empty_like(x) for x in input]
+    _algo.ts_rank(r, input, periods)
+    return r
+  else:
+    r = np.empty_like(input)
+    _algo.ts_rank(r, input, periods)
     return r
 
