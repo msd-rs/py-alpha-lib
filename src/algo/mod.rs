@@ -11,8 +11,6 @@ mod stats;
 mod stddev;
 mod sum;
 
-use std::fmt::{Debug, Display};
-
 pub use context::Context;
 pub use cross::*;
 pub use ema::*;
@@ -32,6 +30,9 @@ pub fn is_normal<T: Float>(a: &T) -> bool {
   !a.is_nan()
 }
 
+#[cfg(test)]
+use std::fmt::{Debug, Display};
+#[cfg(test)]
 pub fn assert_vec_eq_nan<T: Float + Display + Debug>(a: &[T], b: &[T]) {
   assert!(
     a.len() == b.len(),

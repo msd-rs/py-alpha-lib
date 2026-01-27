@@ -1,20 +1,47 @@
 mod algo;
+use std::sync::{LazyLock, RwLock};
+
 use pyo3::prelude::*;
 
+use crate::algo::Context;
+
+static _ALGO_CTX_: LazyLock<RwLock<Context>> = LazyLock::new(|| RwLock::new(Context::default()));
+
 mod algo_impl {
+  use log::debug;
   use numpy::{PyReadonlyArray1, PyReadwriteArray1};
-  use pyo3::{exceptions::PyValueError, ffi::c_str, prelude::*, types::PyList};
+  use pyo3::{exceptions::PyValueError, prelude::*, types::PyList};
   use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
+
+  use crate::_ALGO_CTX_;
 
   use super::algo::*;
 
-  fn ctx<'py>(py: Python<'py>) -> Context {
-    match py
-      .eval(c_str!("_ALGO_CTX_"), None, None)
-      .and_then(|v| v.extract::<Context>())
-    {
-      Ok(t) => t,
+  fn ctx<'py>(_py: Python<'py>) -> Context {
+    let ctx = match _ALGO_CTX_.try_read() {
+      Ok(ctx) => ctx.clone(),
       Err(_e) => Context::default(),
+    };
+    debug!("current {}", ctx);
+    ctx
+  }
+
+  #[pyfunction]
+  #[pyo3(signature = (/, start=None, groups=None, flags=None))]
+  pub fn set_ctx<'py>(
+    _py: Python<'py>,
+    start: Option<i32>,
+    groups: Option<u32>,
+    flags: Option<u64>,
+  ) -> PyResult<()> {
+    match _ALGO_CTX_.try_write() {
+      Ok(mut ctx) => {
+        start.map(|s| ctx._start = s);
+        groups.map(|g| ctx._groups = g);
+        flags.map(|f| ctx._flags = f);
+        Ok(())
+      }
+      Err(_e) => Err(PyValueError::new_err("failed to set context")),
     }
   }
 
@@ -150,6 +177,7 @@ fn _algo(m: &Bound<'_, PyModule>) -> PyResult<()> {
   pyo3_log::init();
 
   m.add_function(wrap_pyfunction!(ema, m)?)?;
+  m.add_function(wrap_pyfunction!(set_ctx, m)?)?;
   algo_impl::register_functions(m)?;
   Ok(())
 }

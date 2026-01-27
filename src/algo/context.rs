@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use pyo3::FromPyObject;
 
 /// Context information for the how to calculate the result
@@ -22,6 +24,7 @@ pub const FLAG_SKIP_NAN: u64 = 1;
 pub const FLAG_STRICTLY_CYCLE: u64 = 2;
 
 impl Context {
+  #[allow(dead_code)]
   pub fn new(start: i32, groups: u32, flags: u64) -> Self {
     Self {
       _start: start,
@@ -72,5 +75,15 @@ impl From<(i32, u32, u64)> for Context {
       _groups: groups,
       _flags: flags,
     }
+  }
+}
+
+impl Display for Context {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(
+      f,
+      "Context {{ start: {}, groups: {}, flags: {} }}",
+      self._start, self._groups, self._flags
+    )
   }
 }

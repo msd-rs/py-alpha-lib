@@ -9,9 +9,8 @@ df = pd.DataFrame(
     "Number_legs": [4, 2, 4, 8, 0],
   }
 )
-df["rank"] = df["Number_legs"].rank(pct=True)
 
-print(df)
 
-_ALGO_CTX_ = alpha.Context(5)
+alpha.set_ctx(groups=5)
 print(alpha.RANK(df["Number_legs"].to_numpy().astype(np.float64)))
+print(df["Number_legs"].rank(pct=True).to_numpy().astype(np.float64))

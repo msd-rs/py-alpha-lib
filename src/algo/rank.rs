@@ -1,6 +1,5 @@
 use std::{cmp::Ordering, collections::BTreeMap, fmt::Debug};
 
-use log::info;
 use num_traits::Float;
 use rayon::prelude::*;
 
@@ -125,8 +124,6 @@ pub fn ta_rank<NumT: Float + Send + Sync + Debug>(
 
   let group_size = ctx.chunk_size(r.len()) as usize;
   let groups = ctx.groups() as usize;
-
-  info!("group_size: {}, groups: {}", group_size, groups);
 
   if ctx.groups() < 2 {
     return ta_ts_rank(ctx, r, input, 0);

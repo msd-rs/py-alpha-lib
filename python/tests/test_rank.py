@@ -1,22 +1,14 @@
-import alpha.algo as algo
+import alpha
 import numpy as np
 import time
+import logging
 
-
-class Context:
-  def __init__(self, start=0, groups=1, flags=0):
-    self.start = start
-    self.groups = groups
-    self.flags = flags
-
-
-_ALGO_CTX_ = Context()
-
+logging.basicConfig(level=logging.DEBUG)
 
 a = np.random.rand(5000_0000)
 
-_ALGO_CTX_.groups = 100
+alpha.set_ctx(groups=100)
 t1 = time.time()
-algo.RANK(a)
+alpha.RANK(a)
 t2 = time.time()
 print(len(a), t2 - t1)

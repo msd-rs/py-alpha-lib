@@ -179,7 +179,7 @@ def to_python(
 
   if as_function:
     lines = []
-    lines.append(f"{indent_str}def {name}(ctx: ExecContext):")
+    lines.append(f"{indent_str}def {name}(ctx):")
 
     body_indent = indent_str + indent_by
 

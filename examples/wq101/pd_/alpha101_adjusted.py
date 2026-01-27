@@ -12,20 +12,16 @@ from numpy import abs
 from numpy import log
 from numpy import sign
 from scipy.stats import rankdata
-import alpha
-import logging
-
-logger = logging.getLogger("alpha101")
 
 
 # region Auxiliary functions
 
 
-def returns(a: np.ndarray):
-  return a / alpha.REF(a, 1) - 1
+def returns(df):
+  return df.rolling(2).apply(lambda x: x.iloc[-1] / x.iloc[0]) - 1
 
 
-def ts_sum(a: np.ndarray, window=10):
+def ts_sum(df, window=10):
   """
   Wrapper function to estimate rolling sum.
   :param df: a pandas DataFrame.
@@ -33,47 +29,47 @@ def ts_sum(a: np.ndarray, window=10):
   :return: a pandas DataFrame with the time-series min over the past 'window' days.
   """
 
-  return alpha.SUM(a, window)
+  return df.rolling(window).sum()
 
 
-def sma(a: np.ndarray, window=10):
+def sma(df, window=10):
   """
   Wrapper function to estimate SMA.
   :param df: a pandas DataFrame.
   :param window: the rolling window.
   :return: a pandas DataFrame with the time-series min over the past 'window' days.
   """
-  return alpha.MA(a, window)
+  return df.rolling(window).mean()
 
 
-def stddev(a: np.ndarray, window=10):
+def stddev(df, window=10):
   """
   Wrapper function to estimate rolling standard deviation.
   :param df: a pandas DataFrame.
   :param window: the rolling window.
   :return: a pandas DataFrame with the time-series min over the past 'window' days.
   """
-  return alpha.STDDEV(a, window)
+  return df.rolling(window).std()
 
 
-def correlation(x: np.ndarray, y: np.ndarray, window=10):
+def correlation(x, y, window=10):
   """
-  Wrapper function to estimate rolling correlations.
+  Wrapper function to estimate rolling corelations.
   :param df: a pandas DataFrame.
   :param window: the rolling window.
   :return: a pandas DataFrame with the time-series min over the past 'window' days.
   """
-  return alpha.CORR(x, y, window)
+  return x.rolling(window).corr(y)
 
 
-def covariance(x: np.ndarray, y: np.ndarray, window=10):
+def covariance(x, y, window=10):
   """
   Wrapper function to estimate rolling covariance.
   :param df: a pandas DataFrame.
   :param window: the rolling window.
   :return: a pandas DataFrame with the time-series min over the past 'window' days.
   """
-  return alpha.COV(x, y, window)
+  return x.rolling(window).cov(y)
 
 
 def rolling_rank(na):
@@ -85,14 +81,14 @@ def rolling_rank(na):
   return rankdata(na, method="min")[-1]
 
 
-def ts_rank(a: np.ndarray, window=10):
+def ts_rank(df, window=10):
   """
   Wrapper function to estimate rolling rank.
   :param df: a pandas DataFrame.
   :param window: the rolling window.
   :return: a pandas DataFrame with the time-series rank over the past window days.
   """
-  return alpha.TS_RANK(a, window)
+  return df.rolling(window).apply(rolling_rank)
 
 
 def rolling_prod(na):
@@ -104,104 +100,120 @@ def rolling_prod(na):
   return np.prod(na)
 
 
-def product(a: np.ndarray, window=10):
+def product(df, window=10):
   """
   Wrapper function to estimate rolling product.
   :param df: a pandas DataFrame.
   :param window: the rolling window.
   :return: a pandas DataFrame with the time-series product over the past 'window' days.
   """
-  return alpha.PRODUCT(a, window)
+  return df.rolling(window).apply(rolling_prod)
 
 
-def ts_min(a: np.ndarray, window=10):
+def ts_min(df, window=10):
   """
   Wrapper function to estimate rolling min.
   :param df: a pandas DataFrame.
   :param window: the rolling window.
   :return: a pandas DataFrame with the time-series min over the past 'window' days.
   """
-  return alpha.LLV(a, window)
+  return df.rolling(window).min()
 
 
-def ts_max(a: np.ndarray, window=10):
+def ts_max(df, window=10):
   """
   Wrapper function to estimate rolling min.
   :param df: a pandas DataFrame.
   :param window: the rolling window.
   :return: a pandas DataFrame with the time-series max over the past 'window' days.
   """
-  return alpha.HHV(a, window)
+  return df.rolling(window).max()
 
 
-def delta(a: np.ndarray, period=1):
+def delta(df, period=1):
   """
   Wrapper function to estimate difference.
   :param df: a pandas DataFrame.
   :param period: the difference grade.
   :return: a pandas DataFrame with today’s value minus the value 'period' days ago.
   """
-  return a - alpha.REF(a, period)
+  return df.diff(period)
 
 
-def delay(a: np.ndarray, period=1):
+def delay(df, period=1):
   """
   Wrapper function to estimate lag.
   :param df: a pandas DataFrame.
   :param period: the lag grade.
   :return: a pandas DataFrame with lagged time series
   """
-  return alpha.REF(a, period)
+  return df.shift(period)
 
 
-def rank(a: np.ndarray):
+def rank(df):
   """
   Cross sectional rank
   :param df: a pandas DataFrame.
   :return: a pandas DataFrame with rank along columns.
   """
-  return alpha.RANK(a)
+  return df.rank(axis=1, method="min", pct=True)
+  # return df.rank(pct=True)
 
 
-def scale(a: np.ndarray, k=1):
+def scale(df, k=1):
   """
   Scaling time serie.
   :param df: a pandas DataFrame.
   :param k: scaling factor.
   :return: a pandas DataFrame rescaled df such that sum(abs(df)) = k
   """
-  sum = np.abs(a).sum()
-  return a * k / sum
+  return df.mul(k).div(np.abs(df).sum())
 
 
-def ts_argmax(a: np.ndarray, window=10):
+def ts_argmax(df, window=10):
   """
   Wrapper function to estimate which day ts_max(df, window) occurred on
   :param df: a pandas DataFrame.
   :param window: the rolling window.
   :return: well.. that :)
   """
-  return alpha.HHVBARS(a, window)
+  return df.rolling(window).apply(np.argmax) + 1
 
 
-def ts_argmin(a: np.ndarray, window=10):
+def ts_argmin(df, window=10):
   """
   Wrapper function to estimate which day ts_min(df, window) occurred on
   :param df: a pandas DataFrame.
   :param window: the rolling window.
   :return: well.. that :)
   """
-  return alpha.LLVBAR(a, window)
+  return df.rolling(window).apply(np.argmin) + 1
 
 
-def decay_linear(a: np.ndarray, period=10):
+def decay_linear(df, period=10):
   """
   Linear weighted moving average implementation.
   :param df: a pandas DataFrame.
   :param period: the LWMA period
   :return: a pandas DataFrame with the LWMA.
   """
-  return alpha.LWMA(a, period)
+  # Clean data
+  if df.isnull().values.any():
+    df.fillna(method="ffill", inplace=True)
+    df.fillna(method="bfill", inplace=True)
+    df.fillna(value=0, inplace=True)
+  na_lwma = np.zeros_like(df)
+  na_lwma[:period, :] = df.iloc[:period, :]
+  na_series = df.as_matrix()
+
+  divisor = period * (period + 1) / 2
+  y = (np.arange(period) + 1) * 1.0 / divisor
+  # Estimate the actual lwma with the actual close.
+  # The backtest engine should assure to be snooping bias free.
+  for row in range(period - 1, df.shape[0]):
+    x = na_series[row - period + 1 : row + 1, :]
+    na_lwma[row, :] = np.dot(x.T, y)
+  return pd.DataFrame(na_lwma, index=df.index, columns=["CLOSE"])
 
 
 # endregion
@@ -295,23 +307,20 @@ def get_alpha(df):
 
 
 class Alphas(object):
-  def __init__(self, df_data: pd.DataFrame):
-    self.open = df_data["open"].to_numpy()
-    self.high = df_data["high"].to_numpy()
-    self.low = df_data["low"].to_numpy()
-    self.close = df_data["close"].to_numpy()
-    self.volume = df_data["vol"].to_numpy()
-    self.returns = returns(df_data["close"].to_numpy())
-    self.vwap = df_data["vwap"].to_numpy()
+  def __init__(self, df_data):
+    self.open = df_data["open"]
+    self.high = df_data["high"]
+    self.low = df_data["low"]
+    self.close = df_data["close"]
+    self.volume = df_data["vol"]
+    self.returns = returns(df_data["close"])
+    self.vwap = df_data["vwap"]
 
   # Alpha#1	 (rank(Ts_ArgMax(SignedPower(((returns < 0) ? stddev(returns, 20) : close), 2.), 5)) -0.5)
   def alpha001(self):
-    return rank(
-      ts_argmax(
-        np.power(np.where(self.returns < 0, stddev(self.returns, 20), self.close), 2),
-        5,
-      )
-    )
+    inner = self.close.copy()
+    inner[self.returns < 0] = stddev(self.returns, 20)
+    return rank(ts_argmax(inner**2, 5)) - 0.5
 
   # Alpha#2	 (-1 * correlation(rank(delta(log(volume), 2)), rank(((close - open) / open)), 6))
   def alpha002(self):
