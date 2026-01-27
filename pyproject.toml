@@ -7,7 +7,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dynamic = ["version"]
-dependencies = ["pandas==3.0.*"]
+dependencies = ["numpy>=2"]
 readme = "README.md"
 description = "Alpha Library: A high-performance rolling window calculation library implemented in Rust with Python bindings. Used for financial data analysis and factor research."
 license = { file = "LICENSE" }
@@ -20,7 +20,7 @@ build-backend = "maturin"
 [dependency-groups]
 dev = [
     "lark>=1.3.1",
-    "pandas>=2.3.3",
+    "pandas>=3.0.0",
     "pytest>=9.0.2",
     "scipy>=1.15.3",
     "ta-lib>=0.6.8",

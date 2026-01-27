@@ -28,6 +28,8 @@ jobs:
           python-version: 3.x
       - name: Build wheels
         uses: PyO3/maturin-action@v1
+        env:
+          RUSTFLAGS: "-C target-feature=+sse4.2 -C target-feature=+avx2 -C target-feature=+pclmulqdq"
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
@@ -53,6 +55,8 @@ jobs:
           python-version: 3.x
       - name: Build wheels
         uses: PyO3/maturin-action@v1
+        env:
+          RUSTFLAGS: "-C target-feature=+sse4.2 -C target-feature=+avx2 -C target-feature=+pclmulqdq"
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
@@ -79,6 +83,8 @@ jobs:
           architecture: ${{ matrix.platform.target }}
       - name: Build wheels
         uses: PyO3/maturin-action@v1
+        env:
+          RUSTFLAGS: "-C target-feature=+sse4.2 -C target-feature=+avx2 -C target-feature=+pclmulqdq"
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
