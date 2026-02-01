@@ -60,7 +60,7 @@ print(result)
 
 # Calculate 3-period exponential moving average, skipping NaN values
 al.set_ctx(flags=al.FLAG_SKIP_NAN)
-data_with_nan = [1, 2, None, 4, 5, 6, 7, 8, 9, 10]
+data_with_nan = np.array([1, 2, None, 4, 5, 6, 7, 8, 9, 10], dtype=np.float64)
 result = al.MA(data_with_nan, 3)
 print(result)
 # Output: [1.  1.5 2.5 3.5 4.5 5.5 6.5 7.5 8.5 9.5]

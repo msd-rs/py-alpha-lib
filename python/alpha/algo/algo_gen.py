@@ -1,6 +1,3 @@
-# Copyright 2026 MSD-RS Project LiJia
-# SPDX-License-Identifier: BSD-2-Clause
-
 # THIS FILE IS AUTO-GENERATED, DO NOT EDIT
 
 import numpy as np
@@ -143,6 +140,35 @@ def DMA(
     _algo.dma(r, input, weight)
     return r
 
+def FRET(
+  open: np.ndarray | list[np.ndarray], high: np.ndarray | list[np.ndarray], low: np.ndarray | list[np.ndarray], close: np.ndarray | list[np.ndarray], delay: int, periods: int
+) -> np.ndarray | list[np.ndarray]:
+  """
+  Future Return
+  
+  Calculates the return from the open price of the delayed day (t+delay) to the close price of the future day (t+delay+periods-1).
+  Return = (Close[t+delay+periods-1] - Open[t+delay]) / Open[t+delay]
+  
+  If n=1, delay=1, it calculates (Close[t+1] - Open[t+1]) / Open[t+1].
+  If High[t+delay] == Open[t+delay] == Low[t+delay] == Close[t+delay], returns NaN.
+  """
+  if isinstance(open, list) and isinstance(high, list) and isinstance(low, list) and isinstance(close, list):
+    r = [np.empty_like(x) for x in open]
+    open = [x.astype(float) for x in open]
+    high = [x.astype(float) for x in high]
+    low = [x.astype(float) for x in low]
+    close = [x.astype(float) for x in close]
+    _algo.fret(r, open, high, low, close, delay, periods)
+    return r
+  else:
+    r = np.empty_like(open)
+    open = open.astype(float)
+    high = high.astype(float)
+    low = low.astype(float)
+    close = close.astype(float)
+    _algo.fret(r, open, high, low, close, delay, periods)
+    return r
+
 def HHV(
   input: np.ndarray | list[np.ndarray], periods: int
 ) -> np.ndarray | list[np.ndarray]:
@@ -175,6 +201,23 @@ def HHVBARS(
   else:
     r = np.empty_like(input)
     _algo.hhvbars(r, input, periods)
+    return r
+
+def INTERCEPT(
+  input: np.ndarray | list[np.ndarray], periods: int
+) -> np.ndarray | list[np.ndarray]:
+  """
+  Linear Regression Intercept
+  
+  Calculates the intercept of the linear regression line for a moving window.
+  """
+  if isinstance(input, list):
+    r = [np.empty_like(x) for x in input]
+    _algo.intercept(r, input, periods)
+    return r
+  else:
+    r = np.empty_like(input)
+    _algo.intercept(r, input, periods)
     return r
 
 def LLV(
@@ -353,6 +396,23 @@ def RLONGCROSS(
     a = a.astype(float)
     b = b.astype(float)
     _algo.rlongcross(r, a, b, n)
+    return r
+
+def SLOPE(
+  input: np.ndarray | list[np.ndarray], periods: int
+) -> np.ndarray | list[np.ndarray]:
+  """
+  Linear Regression Slope
+  
+  Calculates the slope of the linear regression line for a moving window.
+  """
+  if isinstance(input, list):
+    r = [np.empty_like(x) for x in input]
+    _algo.slope(r, input, periods)
+    return r
+  else:
+    r = np.empty_like(input)
+    _algo.slope(r, input, periods)
     return r
 
 def SMA(
