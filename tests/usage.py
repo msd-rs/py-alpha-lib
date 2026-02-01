@@ -1,5 +1,6 @@
 import alpha as al
 import numpy as np
+import pandas as pd
 
 np.set_printoptions(precision=3, suppress=True)
 
@@ -39,19 +40,28 @@ print("INTERCEPT(3):", result_slope)
 
 # Calculate Future Return (FRET)
 # Reset groups to 1 to treat data as single series
-al.set_ctx(flags=al.FLAG_STRICTLY_CYCLE, groups=1)
-open_p = np.array([10, 11, 12, 13, 14, 15], dtype=np.float64)
-high_p = np.array([11, 12, 12, 14, 15, 16], dtype=np.float64)
-low_p = np.array([9, 10, 12, 12, 13, 14], dtype=np.float64)
-close_p = np.array([10.5, 11.5, 12, 13.5, 14.5, 15.5], dtype=np.float64)
+al.set_ctx(flags=al.FLAG_STRICTLY_CYCLE, groups=2)
+open_p = np.array([10, 11, 12, 13, 14, 15] * 2, dtype=np.float64)
+high_p = np.array([11, 12, 12, 14, 15, 16] * 2, dtype=np.float64)
+low_p = np.array([9, 10, 12, 12, 13, 14] * 2, dtype=np.float64)
+close_p = np.array([10.5, 11.5, 12, 13.5, 14.5, 15.5] * 2, dtype=np.float64)
+df_ohlc = pd.DataFrame({"open": open_p, "high": high_p, "low": low_p, "close": close_p})
+df_ohlc["is_calc"] = (
+    ~(
+        (df_ohlc["high"] == df_ohlc["open"])
+        & (df_ohlc["open"] == df_ohlc["low"])
+        & (df_ohlc["low"] == df_ohlc["close"])
+    )
+).astype(np.float64)
+is_calc = df_ohlc["is_calc"].to_numpy(dtype=np.float64)
 
 # FRET(delay=1, periods=3):  Return = (Close[i+delay+periods-1] - Open[i+delay]) / Open[i+delay]
-result_fret1 = al.FRET(open_p, high_p, low_p, close_p, 1, 3)
+result_fret1 = al.FRET(open_p, close_p, is_calc, 1, 3)
 print("FRET(1, 3):", result_fret1)
 
 # FRET(delay=2, periods=1):  Return = (Close[i+delay+periods-1] - Open[i+delay]) / Open[i+delay]
 # Shifted by 1 day relative to default.
-result_fret2 = al.FRET(open_p, high_p, low_p, close_p, 2, 1)
+result_fret2 = al.FRET(open_p, close_p, is_calc, 2, 1)
 print("FRET(2, 1):", result_fret2)
 
 # Calculate Bins
@@ -62,7 +72,6 @@ result_bins = al.BINS(data_bins, 2)
 print("BINS(5, 2):", result_bins)
 # Expected: [0. 0. 0. 1. 1.] (based on 0-based index logic)
 
-import pandas as pd
 df = pd.DataFrame(
     {
         "time":  ["t0","t1","t2","t3"] * 3,

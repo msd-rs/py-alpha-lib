@@ -159,7 +159,7 @@ def DMA(
     return r
 
 def FRET(
-  open: np.ndarray | list[np.ndarray], high: np.ndarray | list[np.ndarray], low: np.ndarray | list[np.ndarray], close: np.ndarray | list[np.ndarray], delay: int, periods: int
+  open: np.ndarray | list[np.ndarray], close: np.ndarray | list[np.ndarray], is_calc: np.ndarray | list[np.ndarray], delay: int, periods: int
 ) -> np.ndarray | list[np.ndarray]:
   """
   Future Return
@@ -168,23 +168,21 @@ def FRET(
   Return = (Close[t+delay+periods-1] - Open[t+delay]) / Open[t+delay]
   
   If n=1, delay=1, it calculates (Close[t+1] - Open[t+1]) / Open[t+1].
-  If High[t+delay] == Open[t+delay] == Low[t+delay] == Close[t+delay], returns NaN.
+  If `is_calc[t+delay]` is 0, returns NaN.
   """
-  if isinstance(open, list) and isinstance(high, list) and isinstance(low, list) and isinstance(close, list):
+  if isinstance(open, list) and isinstance(close, list) and isinstance(is_calc, list):
     r = [np.empty_like(x) for x in open]
     open = [x.astype(float) for x in open]
-    high = [x.astype(float) for x in high]
-    low = [x.astype(float) for x in low]
     close = [x.astype(float) for x in close]
-    _algo.fret(r, open, high, low, close, delay, periods)
+    is_calc = [x.astype(float) for x in is_calc]
+    _algo.fret(r, open, close, is_calc, delay, periods)
     return r
   else:
     r = np.empty_like(open)
     open = open.astype(float)
-    high = high.astype(float)
-    low = low.astype(float)
     close = close.astype(float)
-    _algo.fret(r, open, high, low, close, delay, periods)
+    is_calc = is_calc.astype(float)
+    _algo.fret(r, open, close, is_calc, delay, periods)
     return r
 
 def HHV(

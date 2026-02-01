@@ -12,18 +12,17 @@ use crate::algo::{Context, Error, is_normal};
 /// Return = (Close[t+delay+periods-1] - Open[t+delay]) / Open[t+delay]
 ///
 /// If n=1, delay=1, it calculates (Close[t+1] - Open[t+1]) / Open[t+1].
-/// If High[t+delay] == Open[t+delay] == Low[t+delay] == Close[t+delay], returns NaN.
+/// If `is_calc[t+delay]` is 0, returns NaN.
 pub fn ta_fret<NumT: Float + Send + Sync>(
   ctx: &Context,
   r: &mut [NumT],
   open: &[NumT],
-  high: &[NumT],
-  low: &[NumT],
   close: &[NumT],
+  is_calc: &[NumT],
   delay: usize,
   periods: usize,
 ) -> Result<(), Error> {
-  if r.len() != open.len() || r.len() != high.len() || r.len() != low.len() || r.len() != close.len() {
+  if r.len() != open.len() || r.len() != close.len() || r.len() != is_calc.len() {
     return Err(Error::LengthMismatch(r.len(), open.len()));
   }
 
@@ -35,44 +34,32 @@ pub fn ta_fret<NumT: Float + Send + Sync>(
 
   r.par_chunks_mut(group_size)
     .zip(open.par_chunks(group_size))
-    .zip(high.par_chunks(group_size))
-    .zip(low.par_chunks(group_size))
     .zip(close.par_chunks(group_size))
-    .for_each(|((((r, o), h), l), c)| {
+    .zip(is_calc.par_chunks(group_size))
+    .for_each(|(((r, o), c), m)| {
       let start = ctx.start(r.len());
       r.fill(NumT::nan());
 
-      // Future Return calculation
-      // Return = (Close[t+delay+periods-1] - Open[t+delay]) / Open[t+delay]
-      
       if periods == 0 {
-          return;
+        return;
       }
 
       let exit_offset = periods + delay - 1;
       let max_offset = std::cmp::max(exit_offset, delay);
-      
+
       let end_idx = if c.len() > max_offset { c.len() - max_offset } else { 0 };
 
       for i in start..end_idx {
         let open_next = o[i + delay];
-        let high_next = h[i + delay];
-        let low_next = l[i + delay];
-        let close_next = c[i + delay];
-        
+        let is_calc_next = m[i + delay];
         let close_future = c[i + exit_offset];
 
-        if is_normal(&open_next) && is_normal(&close_future) {
-             // Check if H=O=L=C on the entry day (t+delay)
-             if high_next == open_next && open_next == low_next && low_next == close_next {
-                 r[i] = NumT::nan();
-             } else {
-                 if open_next != NumT::zero() {
-                     r[i] = (close_future - open_next) / open_next;
-                 } else {
-                     r[i] = NumT::nan();
-                 }
-             }
+        if !is_normal(&is_calc_next) || is_calc_next == NumT::zero() {
+          continue;
+        }
+
+        if is_normal(&open_next) && is_normal(&close_future) && open_next != NumT::zero() {
+          r[i] = (close_future - open_next) / open_next;
         }
       }
     });
@@ -88,9 +75,8 @@ mod tests {
   #[test]
   fn test_ta_fret() {
     let open = vec![10.0, 11.0, 12.0, 13.0, 14.0];
-    let high = vec![10.5, 11.5, 12.5, 13.5, 14.5];
-    let low  = vec![ 9.5, 10.5, 11.5, 12.5, 13.5];
     let close = vec![10.5, 11.5, 12.5, 13.5, 14.5];
+    let is_calc = vec![1.0, 1.0, 1.0, 1.0, 1.0];
     let mut r = vec![0.0; 5];
     let ctx = Context::default();
 
@@ -99,7 +85,7 @@ mod tests {
     // Exit = t+1+1-1 = 1 (Close[1]=11.5)
     // Return = (11.5-11.0)/11.0 = 0.5/11.0 = 0.045454545
     
-    ta_fret(&ctx, &mut r, &open, &high, &low, &close, 1, 1).unwrap();
+    ta_fret(&ctx, &mut r, &open, &close, &is_calc, 1, 1).unwrap();
     assert_vec_eq_nan(&r, &vec![
         0.045454545454545456, 
         0.041666666666666664, 
@@ -112,16 +98,15 @@ mod tests {
   #[test]
   fn test_ta_fret_delayed() {
     let open = vec![10.0, 11.0, 12.0, 13.0, 14.0];
-    let high = vec![10.5, 11.5, 12.5, 13.5, 14.5];
-    let low  = vec![ 9.5, 10.5, 11.5, 12.5, 13.5];
     let close = vec![10.5, 11.5, 12.5, 13.5, 14.5];
+    let is_calc = vec![1.0, 1.0, 1.0, 1.0, 1.0];
     let mut r2 = vec![0.0; 5];
     let ctx = Context::default();
 
     // Test delay=2, periods=1
     // t=0: Entry t+2=2. Exit t+2+1-1=2. (Close[2]-Open[2])/Open[2] = (12.5-12)/12
     
-    ta_fret(&ctx, &mut r2, &open, &high, &low, &close, 2, 1).unwrap();
+    ta_fret(&ctx, &mut r2, &open, &close, &is_calc, 2, 1).unwrap();
     let expected2 = vec![
         (12.5 - 12.0) / 12.0,
         (13.5 - 13.0) / 13.0,
@@ -135,18 +120,17 @@ mod tests {
   #[test]
   fn test_ta_fret_ohlc_equal() {
     let open = vec![10.0, 11.0, 12.0];
-    let high = vec![11.0, 11.0, 13.0];
-    let low  = vec![ 9.0, 11.0, 11.0];
     let close = vec![10.5, 11.0, 12.5];
+    let is_calc = vec![1.0, 0.0, 1.0];
     
     // At i=0. Entry i+1=1.
-    // Open[1]=11, High[1]=11, Low[1]=11, Close[1]=11.
+    // is_calc[1]=0.
     // So r[0] should be NaN.
     
     let mut r = vec![0.0; 3];
     let ctx = Context::default();
     
-    ta_fret(&ctx, &mut r, &open, &high, &low, &close, 1, 1).unwrap();
+    ta_fret(&ctx, &mut r, &open, &close, &is_calc, 1, 1).unwrap();
     
     assert!(r[0].is_nan());
   }
