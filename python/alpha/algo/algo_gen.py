@@ -1,6 +1,3 @@
-# Copyright 2026 MSD-RS Project LiJia
-# SPDX-License-Identifier: BSD-2-Clause
-
 # THIS FILE IS AUTO-GENERATED, DO NOT EDIT
 
 import numpy as np
@@ -42,6 +39,24 @@ def BARSSINCE(
     r = np.empty_like(input, dtype=float)
     input = input.astype(bool)
     _algo.barssince(r, input)
+    return r
+
+def BINS(
+  input: np.ndarray | list[np.ndarray], bins: int
+) -> np.ndarray | list[np.ndarray]:
+  """
+  Discretize the input into n bins, the ctx.groups() is the number of groups
+  
+  Bins are 0-based index.
+  Same value are assigned to the same bin.
+  """
+  if isinstance(input, list):
+    r = [np.empty_like(x) for x in input]
+    _algo.bins(r, input, bins)
+    return r
+  else:
+    r = np.empty_like(input)
+    _algo.bins(r, input, bins)
     return r
 
 def CORR(
@@ -143,6 +158,33 @@ def DMA(
     _algo.dma(r, input, weight)
     return r
 
+def FRET(
+  open: np.ndarray | list[np.ndarray], close: np.ndarray | list[np.ndarray], is_calc: np.ndarray | list[np.ndarray], delay: int, periods: int
+) -> np.ndarray | list[np.ndarray]:
+  """
+  Future Return
+  
+  Calculates the return from the open price of the delayed day (t+delay) to the close price of the future day (t+delay+periods-1).
+  Return = (Close[t+delay+periods-1] - Open[t+delay]) / Open[t+delay]
+  
+  If n=1, delay=1, it calculates (Close[t+1] - Open[t+1]) / Open[t+1].
+  If `is_calc[t+delay]` is 0, returns NaN.
+  """
+  if isinstance(open, list) and isinstance(close, list) and isinstance(is_calc, list):
+    r = [np.empty_like(x) for x in open]
+    open = [x.astype(float) for x in open]
+    close = [x.astype(float) for x in close]
+    is_calc = [x.astype(float) for x in is_calc]
+    _algo.fret(r, open, close, is_calc, delay, periods)
+    return r
+  else:
+    r = np.empty_like(open)
+    open = open.astype(float)
+    close = close.astype(float)
+    is_calc = is_calc.astype(float)
+    _algo.fret(r, open, close, is_calc, delay, periods)
+    return r
+
 def HHV(
   input: np.ndarray | list[np.ndarray], periods: int
 ) -> np.ndarray | list[np.ndarray]:
@@ -175,6 +217,23 @@ def HHVBARS(
   else:
     r = np.empty_like(input)
     _algo.hhvbars(r, input, periods)
+    return r
+
+def INTERCEPT(
+  input: np.ndarray | list[np.ndarray], periods: int
+) -> np.ndarray | list[np.ndarray]:
+  """
+  Linear Regression Intercept
+  
+  Calculates the intercept of the linear regression line for a moving window.
+  """
+  if isinstance(input, list):
+    r = [np.empty_like(x) for x in input]
+    _algo.intercept(r, input, periods)
+    return r
+  else:
+    r = np.empty_like(input)
+    _algo.intercept(r, input, periods)
     return r
 
 def LLV(
@@ -262,6 +321,22 @@ def MA(
   else:
     r = np.empty_like(input)
     _algo.ma(r, input, periods)
+    return r
+
+def NEUTRALIZE(
+  category: np.ndarray | list[np.ndarray], input: np.ndarray | list[np.ndarray]
+) -> np.ndarray | list[np.ndarray]:
+  if isinstance(category, list) and isinstance(input, list):
+    r = [np.empty_like(x) for x in category]
+    category = [x.astype(float) for x in category]
+    input = [x.astype(float) for x in input]
+    _algo.neutralize(r, category, input)
+    return r
+  else:
+    r = np.empty_like(category)
+    category = category.astype(float)
+    input = input.astype(float)
+    _algo.neutralize(r, category, input)
     return r
 
 def PRODUCT(
@@ -353,6 +428,23 @@ def RLONGCROSS(
     a = a.astype(float)
     b = b.astype(float)
     _algo.rlongcross(r, a, b, n)
+    return r
+
+def SLOPE(
+  input: np.ndarray | list[np.ndarray], periods: int
+) -> np.ndarray | list[np.ndarray]:
+  """
+  Linear Regression Slope
+  
+  Calculates the slope of the linear regression line for a moving window.
+  """
+  if isinstance(input, list):
+    r = [np.empty_like(x) for x in input]
+    _algo.slope(r, input, periods)
+    return r
+  else:
+    r = np.empty_like(input)
+    _algo.slope(r, input, periods)
     return r
 
 def SMA(
