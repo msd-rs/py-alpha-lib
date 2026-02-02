@@ -7,29 +7,42 @@ For financial data analysis, there are many algorithms required a rolling window
 ## Algorithms
 
 | Name       | Description                                                  | Ref Link                                                                |
+| Name       | Description                                                  | Ref Link                                                                |
 | ---------- | ------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| BARSLAST   | Bars since last condition true                               | https://www.amibroker.com/guide/afl/barslast.html                       |
-| BARSSINCE  | Bars since first condition true                              | https://www.amibroker.com/guide/afl/barssince.html                      |
-| COUNT      | Count periods where condition is true                        | https://www.amibroker.com/guide/afl/count.html                          |
-| CROSS      | CROSS(A, B): Previous A < B, Current A >= B                  | https://www.amibroker.com/guide/afl/cross.html                          |
-| DMA        | Exponential Moving Average                                   | https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average |
-| EMA        | Exponential Moving Average(weight = 2 / (n + 1))             | https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average |
-| HHV        | Highest High Value                                           | https://www.amibroker.com/guide/afl/hhv.html                            |
-| HHVBARS    | Bars since Highest High Value                                | https://www.amibroker.com/guide/afl/hhvbars.html                        |
-| LLV        | Lowest Low Value                                             | https://www.amibroker.com/guide/afl/llv.html                            |
-| LLVBARS    | Bars since Lowest Low Value                                  | https://www.amibroker.com/guide/afl/llvbars.html                        |
-| LONGCROSS  | LONGCROSS(A,B,N): Previous N A < B, Current A >= B           |                                                                         |
-| MA         | Moving Average                                               | https://en.wikipedia.org/wiki/Moving_average#Simple_moving_average      |
-| RANK       | rank by group dim                                            |                                                                         |
-| RCROSS     | RCROSE(A, B): Previous A > B, Current A <= B                 |                                                                         |
-| REF        | Reference to value N periods ago                             | https://www.amibroker.com/guide/afl/ref.html                            |
-| REGBETA    | REGRESI(A, B): Previous A > B, Current A <= B                |                                                                         |
-| REGRESI    | REGRESI(A, B): Previous A > B, Current A <= B                |                                                                         |
-| RLONGCROSS | RLONGCROSS(A,B,N): Previous N A > B, Current A <= B          |                                                                         |
-| SMA        | Exponential Moving Average (weight = m / n)                  | https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average |
-| SUM        | Sum of value N periods ago                                   | https://www.amibroker.com/guide/afl/sum.html                            |
-| SUMBARS    | Sums X backwards until the sum is greater than or equal to A | https://www.amibroker.com/guide/afl/sumbars.html                        |
-| TS_RANK    | rank by ts dim                                               |
+| BARSLAST   | Calculate number of bars since last condition true           | https://www.amibroker.com/guide/afl/barslast.html                       |
+| BARSSINCE  | Calculate number of bars since first condition true          | https://www.amibroker.com/guide/afl/barssince.html                      |
+| BINS       | Discretize the input into n bins, the ctx.groups() is the number of groups  Bins are 0-based index. Same value are assigned to the same bin. |                                                                         |
+| CORR       | Calculate Correlation over a moving window  Correlation = Cov(X, Y) / (StdDev(X) * StdDev(Y)) |                                                                         |
+| COUNT      | Calculate number of periods where condition is true in passed `periods` window | https://www.amibroker.com/guide/afl/count.html                          |
+| COV        | Calculate Covariance over a moving window  Covariance = (SumXY - (SumX * SumY) / N) / (N - 1) |                                                                         |
+| CROSS      | For 2 arrays A and B, return true if A[i-1] < B[i-1] and A[i] >= B[i] alias: golden_cross, cross_ge | https://www.amibroker.com/guide/afl/cross.html                          |
+| DMA        | Exponential Moving Average current = weight * current + (1 - weight) * previous | https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average |
+| EMA        | Exponential Moving Average (variant of well-known EMA) weight = 2 / (n + 1) | https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average |
+| FRET       | Future Return  Calculates the return from the open price of the delayed day (t+delay) to the close price of the future day (t+delay+periods-1). Return = (Close[t+delay+periods-1] - Open[t+delay]) / Open[t+delay]  If n=1, delay=1, it calculates (Close[t+1] - Open[t+1]) / Open[t+1]. If `is_calc[t+delay]` is 0, returns NaN. |                                                                         |
+| HHV        | Find highest value in a preceding `periods` window           | https://www.amibroker.com/guide/afl/hhv.html                            |
+| HHVBARS    | The number of periods that have passed since the array reached its `periods` period high | https://www.amibroker.com/guide/afl/hhvbars.html                        |
+| INTERCEPT  | Linear Regression Intercept  Calculates the intercept of the linear regression line for a moving window. |                                                                         |
+| LLV        | Find lowest value in a preceding `periods` window            | https://www.amibroker.com/guide/afl/llv.html                            |
+| LLVBARS    | The number of periods that have passed since the array reached its periods period low | https://www.amibroker.com/guide/afl/llvbars.html                        |
+| LONGCROSS  | For 2 arrays A and B, return true if previous N periods A < B, Current A >= B |                                                                         |
+| LWMA       | Linear Weighted Moving Average  LWMA = SUM(Price * Weight) / SUM(Weight) |                                                                         |
+| MA         | Simple Moving Average, also known as arithmetic moving average | https://en.wikipedia.org/wiki/Moving_average#Simple_moving_average      |
+| NEUTRALIZE | Neutralize the effect of a categorical variable on a numeric variable |                                                                         |
+| PRODUCT    | Calculate product of values in preceding `periods` window  If periods is 0, it calculates the cumulative product from the first valid value. |                                                                         |
+| RANK       | Calculate rank percentage cross group dimension, the ctx.groups() is the number of groups Same value are averaged |                                                                         |
+| RCROSS     | For 2 arrays A and B, return true if A[i-1] > B[i-1] and A[i] <= B[i] alias: death_cross, cross_le |                                                                         |
+| REF        | Right shift input array by `periods`, r[i] = input[i - periods] | https://www.amibroker.com/guide/afl/ref.html                            |
+| REGBETA    | Calculate Regression Coefficient (Beta) of Y on X over a moving window  Beta = Cov(X, Y) / Var(X) |                                                                         |
+| REGRESI    | Calculate Regression Residual of Y on X over a moving window  Returns the residual of the last point: epsilon = Y - (alpha + beta * X) |                                                                         |
+| RLONGCROSS | For 2 arrays A and B, return true if previous N periods A > B, Current A <= B |                                                                         |
+| SLOPE      | Linear Regression Slope  Calculates the slope of the linear regression line for a moving window. |                                                                         |
+| SMA        | Exponential Moving Average (variant of well-known EMA) weight = m / n | https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average |
+| STDDEV     | Calculate Standard Deviation over a moving window            |                                                                         |
+| SUM        | Calculate sum of values in preceding `periods` window  If periods is 0, it calculates the cumulative sum from the first valid value. | https://www.amibroker.com/guide/afl/sum.html                            |
+| SUMBARS    | Calculate number of periods (bars) backwards until the sum of values is greater than or equal to `amount` | https://www.amibroker.com/guide/afl/sumbars.html                        |
+| SUMIF      | Calculate sum of values in preceding `periods` window where `condition` is true |                                                                         |
+| TS_RANK    | Calculate rank in a sliding window with size `periods`       |                                                                         |
+| VAR        | Calculate Variance over a moving window  Variance = (SumSq - (Sum^2)/N) / (N - 1) |                                                                         |
 
 # Usage
 

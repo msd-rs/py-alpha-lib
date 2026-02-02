@@ -63,6 +63,7 @@ impl<NumT: Float> UnsafePtr<NumT> {
 unsafe impl<NumT: Float> Send for UnsafePtr<NumT> {}
 unsafe impl<NumT: Float> Sync for UnsafePtr<NumT> {}
 
+/// Neutralize the effect of a categorical variable on a numeric variable
 pub fn ta_neutralize<NumT: Float + Send + Sync + Debug>(
   ctx: &Context,
   r: &mut [NumT],
@@ -185,7 +186,9 @@ mod tests {
   fn test_neutralize_simple() {
     let ctx = Context::new(0, 4, 0);
     let category = vec![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0];
-    let input = vec![10.0, 20.0, 30.0, 12.0, 18.0, 33.0, 5.0, 7.0, 9.0, 6.0, 8.0, 10.0];
+    let input = vec![
+      10.0, 20.0, 30.0, 12.0, 18.0, 33.0, 5.0, 7.0, 9.0, 6.0, 8.0, 10.0,
+    ];
 
     let mut r = vec![0.0; input.len()];
     ta_neutralize(&ctx, &mut r, &category, &input).unwrap();
