@@ -40,6 +40,7 @@ For financial data analysis, there are many algorithms required a rolling window
 | SUM        | Calculate sum of values in preceding `periods` window  If periods is 0, it calculates the cumulative sum from the first valid value. | https://www.amibroker.com/guide/afl/sum.html                            |
 | SUMBARS    | Calculate number of periods (bars) backwards until the sum of values is greater than or equal to `amount` | https://www.amibroker.com/guide/afl/sumbars.html                        |
 | SUMIF      | Calculate sum of values in preceding `periods` window where `condition` is true |                                                                         |
+| TS_CORR    | Time Series Correlation Calculates the correlation coefficient between the input series and the time index       |                                                                         |
 | TS_RANK    | Calculate rank in a sliding window with size `periods`       |                                                                         |
 | VAR        | Calculate Variance over a moving window  Variance = (SumSq - (Sum^2)/N) / (N - 1) |                                                                         |
 
