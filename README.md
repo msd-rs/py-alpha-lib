@@ -56,7 +56,7 @@ Control computation behavior via `alpha.set_ctx()`:
   alpha.set_ctx(flags=alpha.FLAG_SKIP_NAN)
   data_nan = np.array([1, 2, np.nan, 4, 5, 6, 7, 8, 9, 10], dtype=np.float64)
   result = alpha.MA(data_nan, 3)
-  # [1.  1.5 nan 3.  4.5 5.  6.  7.  8.  9.]
+  #[1.    1.5     nan 2.333 3.667 5.    6.    7.    8.    9.   ]
   ```
 
 
