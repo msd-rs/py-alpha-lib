@@ -21,13 +21,12 @@ pub fn ta_sum<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       if periods == 0 {
@@ -35,7 +34,7 @@ pub fn ta_sum<NumT: Float + Send + Sync>(
         let mut sum = NumT::zero();
         let mut found_valid = false;
 
-        for i in start..x.len() {
+        for i in start..end {
           let val = x[i];
           if is_normal(&val) {
             sum = sum + val;
@@ -50,7 +49,7 @@ pub fn ta_sum<NumT: Float + Send + Sync>(
         // Sliding window sum
         if ctx.is_skip_nan() {
           // Skip NaN logic
-          let iter = SkipNanWindow::new(x, periods, start);
+          let iter = SkipNanWindow::new(&x[..end], periods, start);
           let mut sum = NumT::zero();
 
           for i in iter {
@@ -94,7 +93,7 @@ pub fn ta_sum<NumT: Float + Send + Sync>(
             }
           }
 
-          for i in start..x.len() {
+          for i in start..end {
             let val = x[i];
 
             // Add new value
@@ -159,16 +158,15 @@ pub fn ta_sumbars<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
-      for i in start..x.len() {
+      for i in start..end {
         let mut sum = NumT::zero();
         let mut bars = 0;
 
@@ -223,15 +221,13 @@ pub fn ta_sumif<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
-  let condition = ctx.align_end(condition);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .zip(condition.par_chunks(ctx.chunk_size(condition.len())))
     .for_each(|((r, x), c)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       if periods == 0 {
@@ -239,7 +235,7 @@ pub fn ta_sumif<NumT: Float + Send + Sync>(
         let mut sum = NumT::zero();
         let mut found_valid = false;
 
-        for i in start..x.len() {
+        for i in start..end {
           let val = x[i];
           let cond = c[i];
           if cond && is_normal(&val) {
@@ -272,7 +268,7 @@ pub fn ta_sumif<NumT: Float + Send + Sync>(
           // Window is defined by `input` validity (if skip_nan) and `periods`.
           // Summation includes `val` only if `condition` is true.
 
-          let iter = SkipNanWindow::new(x, periods, start);
+          let iter = SkipNanWindow::new(&x[..end], periods, start);
           let mut sum = NumT::zero();
 
           for i in iter {
@@ -337,7 +333,7 @@ pub fn ta_sumif<NumT: Float + Send + Sync>(
             }
           }
 
-          for i in start..x.len() {
+          for i in start..end {
             let val = x[i];
             let cond = c[i];
 

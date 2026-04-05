@@ -78,9 +78,6 @@ pub fn ta_group_rank<NumT: Float + Send + Sync + Debug>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let category = ctx.align_end(category);
-  let input = ctx.align_end(input);
 
   let group_size = ctx.chunk_size(r.len()) as usize;
   let groups = ctx.groups() as usize;
@@ -89,9 +86,6 @@ pub fn ta_group_rank<NumT: Float + Send + Sync + Debug>(
     return Err(Error::LengthMismatch(r.len(), group_size * groups));
   }
 
-  let r = ctx.align_end_mut(r);
-  let category = ctx.align_end(category);
-  let input = ctx.align_end(input);
 
   let r_ptr = UnsafePtr::new(r.as_mut_ptr(), r.len());
   (0..group_size).into_par_iter().for_each(|j| {
@@ -178,9 +172,6 @@ pub fn ta_group_zscore<NumT: Float + Send + Sync + Debug>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let category = ctx.align_end(category);
-  let input = ctx.align_end(input);
 
   let group_size = ctx.chunk_size(r.len()) as usize;
   let groups = ctx.groups() as usize;
@@ -189,9 +180,6 @@ pub fn ta_group_zscore<NumT: Float + Send + Sync + Debug>(
     return Err(Error::LengthMismatch(r.len(), group_size * groups));
   }
 
-  let r = ctx.align_end_mut(r);
-  let category = ctx.align_end(category);
-  let input = ctx.align_end(input);
 
   let r_ptr = UnsafePtr::new(r.as_mut_ptr(), r.len());
   (0..group_size).into_par_iter().for_each(|j| {

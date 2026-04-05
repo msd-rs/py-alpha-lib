@@ -21,8 +21,6 @@ where
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   if periods < 2 {
     r.fill(NumT::nan());
@@ -33,10 +31,11 @@ where
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       if ctx.is_skip_nan() {
-        let iter = SkipNanWindow::new(x, periods, start);
+        let iter = SkipNanWindow::new(&x[..end], periods, start);
         let mut sum_y = NumT::zero();
         let mut sum_y2 = NumT::zero();
         let mut sum_xy_1based = NumT::zero();

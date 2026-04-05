@@ -20,19 +20,17 @@ pub fn ta_scan_mul<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
-  let condition = ctx.align_end(condition);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .zip(condition.par_chunks(ctx.chunk_size(condition.len())))
     .for_each(|((r, x), c)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       let mut acc = NumT::one();
-      for i in start..x.len() {
+      for i in start..end {
         if c[i] && is_normal(&x[i]) {
           acc = acc * x[i];
         }
@@ -57,19 +55,17 @@ pub fn ta_scan_add<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
-  let condition = ctx.align_end(condition);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .zip(condition.par_chunks(ctx.chunk_size(condition.len())))
     .for_each(|((r, x), c)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       let mut acc = NumT::zero();
-      for i in start..x.len() {
+      for i in start..end {
         if c[i] && is_normal(&x[i]) {
           acc = acc + x[i];
         }

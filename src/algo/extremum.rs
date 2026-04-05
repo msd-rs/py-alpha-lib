@@ -87,13 +87,12 @@ where
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       if periods == 0 {
@@ -102,7 +101,7 @@ where
         let mut best_idx: usize = 0;
         let mut has_nan_poison = false;
 
-        for i in start..x.len() {
+        for i in start..end {
           let val = x[i];
           if !is_normal(&val) {
             if !ctx.is_skip_nan() {
@@ -141,7 +140,7 @@ where
         let mut deque: VecDeque<usize> = VecDeque::new();
 
         if ctx.is_skip_nan() {
-          let iter = SkipNanWindow::new(x, periods, start);
+          let iter = SkipNanWindow::new(&x[..end], periods, start);
           for i in iter {
             let curr_val = x[i.end];
             if is_normal(&curr_val) {
@@ -205,7 +204,7 @@ where
             }
           }
 
-          for i in pre_fill_start..x.len() {
+          for i in pre_fill_start..end {
             let val = x[i];
             let is_valid = is_normal(&val);
 

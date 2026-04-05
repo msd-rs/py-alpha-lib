@@ -21,8 +21,6 @@ pub fn ta_skewness<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   let two = NumT::from(2.0).unwrap();
   let three = NumT::from(3.0).unwrap();
@@ -31,10 +29,11 @@ pub fn ta_skewness<NumT: Float + Send + Sync>(
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       if ctx.is_skip_nan() {
-        let iter = SkipNanWindow::new(x, periods, start);
+        let iter = SkipNanWindow::new(&x[..end], periods, start);
         let mut sum = NumT::zero();
         let mut sum_sq = NumT::zero();
         let mut sum_cb = NumT::zero();
@@ -104,7 +103,7 @@ pub fn ta_skewness<NumT: Float + Send + Sync>(
           }
         }
 
-        for i in start..x.len() {
+        for i in start..end {
           let val = x[i];
 
           if is_normal(&val) {
@@ -164,8 +163,6 @@ pub fn ta_kurtosis<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   let two = NumT::from(2.0).unwrap();
   let three = NumT::from(3.0).unwrap();
@@ -176,10 +173,11 @@ pub fn ta_kurtosis<NumT: Float + Send + Sync>(
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       if ctx.is_skip_nan() {
-        let iter = SkipNanWindow::new(x, periods, start);
+        let iter = SkipNanWindow::new(&x[..end], periods, start);
         let mut sum = NumT::zero();
         let mut sum_sq = NumT::zero();
         let mut sum_cb = NumT::zero();
@@ -262,7 +260,7 @@ pub fn ta_kurtosis<NumT: Float + Send + Sync>(
           }
         }
 
-        for i in start..x.len() {
+        for i in start..end {
           let val = x[i];
 
           if is_normal(&val) {

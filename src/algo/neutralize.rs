@@ -74,9 +74,6 @@ pub fn ta_neutralize<NumT: Float + Send + Sync + Debug>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let category = ctx.align_end(category);
-  let input = ctx.align_end(input);
 
   let group_size = ctx.chunk_size(r.len()) as usize;
   let groups = ctx.groups() as usize;
@@ -85,12 +82,10 @@ pub fn ta_neutralize<NumT: Float + Send + Sync + Debug>(
     return Err(Error::LengthMismatch(r.len(), group_size * groups));
   }
 
-  let r = ctx.align_end_mut(r);
-  let category = ctx.align_end(category);
-  let input = ctx.align_end(input);
 
   if groups < 2 {
-    for i in 0..r.len() {
+    let end = ctx.end(input.len());
+    for i in 0..end {
       if is_normal(&input[i]) && is_normal(&category[i]) {
         r[i] = NumT::from(0.5).unwrap();
       } else {

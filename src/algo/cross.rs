@@ -19,15 +19,13 @@ pub fn ta_cross<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), a.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let a = ctx.align_end(a);
-  let b = ctx.align_end(b);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(a.par_chunks(ctx.chunk_size(a.len())))
     .zip(b.par_chunks(ctx.chunk_size(b.len())))
     .for_each(|((r, a), b)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(false);
 
       if ctx.is_skip_nan() {
@@ -41,7 +39,7 @@ pub fn ta_cross<NumT: Float + Send + Sync>(
 
         let mut was_less: Option<bool> = None;
 
-        for i in start..a.len() {
+        for i in start..end {
           let val_a = a[i];
           let val_b = b[i];
 
@@ -60,7 +58,7 @@ pub fn ta_cross<NumT: Float + Send + Sync>(
         }
       } else {
         // Normal logic (look at i-1)
-        for i in start..a.len() {
+        for i in start..end {
           if i == 0 {
             continue;
           }
@@ -94,21 +92,19 @@ pub fn ta_rcross<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), a.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let a = ctx.align_end(a);
-  let b = ctx.align_end(b);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(a.par_chunks(ctx.chunk_size(a.len())))
     .zip(b.par_chunks(ctx.chunk_size(b.len())))
     .for_each(|((r, a), b)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(false);
 
       if ctx.is_skip_nan() {
         let mut was_greater: Option<bool> = None;
 
-        for i in start..a.len() {
+        for i in start..end {
           let val_a = a[i];
           let val_b = b[i];
 
@@ -126,7 +122,7 @@ pub fn ta_rcross<NumT: Float + Send + Sync>(
           }
         }
       } else {
-        for i in start..a.len() {
+        for i in start..end {
           if i == 0 {
             continue;
           }
@@ -160,15 +156,13 @@ pub fn ta_longcross<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), a.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let a = ctx.align_end(a);
-  let b = ctx.align_end(b);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(a.par_chunks(ctx.chunk_size(a.len())))
     .zip(b.par_chunks(ctx.chunk_size(b.len())))
     .for_each(|((r, a), b)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(false);
 
       if n == 0 {
@@ -180,7 +174,7 @@ pub fn ta_longcross<NumT: Float + Send + Sync>(
         // Let's assume if N=0 it requires at least 1 previous period?
         // Usually N >= 1 for such funcs.
         // If N=0, let's treat as just A >= B
-        for i in start..a.len() {
+        for i in start..end {
           if is_normal(&a[i]) && is_normal(&b[i]) {
             if a[i] >= b[i] {
               r[i] = true;
@@ -205,7 +199,7 @@ pub fn ta_longcross<NumT: Float + Send + Sync>(
 
         let mut less_count = 0;
 
-        for i in start..a.len() {
+        for i in start..end {
           let val_a = a[i];
           let val_b = b[i];
 
@@ -240,7 +234,7 @@ pub fn ta_longcross<NumT: Float + Send + Sync>(
           }
         }
 
-        for i in start..a.len() {
+        for i in start..end {
           let curr_a = a[i];
           let curr_b = b[i];
 
@@ -276,19 +270,17 @@ pub fn ta_rlongcross<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), a.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let a = ctx.align_end(a);
-  let b = ctx.align_end(b);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(a.par_chunks(ctx.chunk_size(a.len())))
     .zip(b.par_chunks(ctx.chunk_size(b.len())))
     .for_each(|((r, a), b)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(false);
 
       if n == 0 {
-        for i in start..a.len() {
+        for i in start..end {
           if is_normal(&a[i]) && is_normal(&b[i]) {
             if a[i] <= b[i] {
               r[i] = true;
@@ -301,7 +293,7 @@ pub fn ta_rlongcross<NumT: Float + Send + Sync>(
       if ctx.is_skip_nan() {
         let mut greater_count = 0;
 
-        for i in start..a.len() {
+        for i in start..end {
           let val_a = a[i];
           let val_b = b[i];
 
@@ -329,7 +321,7 @@ pub fn ta_rlongcross<NumT: Float + Send + Sync>(
           }
         }
 
-        for i in start..a.len() {
+        for i in start..end {
           let curr_a = a[i];
           let curr_b = b[i];
 

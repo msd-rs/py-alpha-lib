@@ -40,27 +40,14 @@ impl Context {
     }
   }
 
-  pub fn align_end_mut<'a, T>(&'a self, r: &'a mut [T]) -> &'a mut [T] {
-    if self._end == 0 {
-      return r;
-    }
-    let end = self.end(r.len());
-    &mut r[..end]
-  }
-
-  pub fn align_end<'a, T>(&'a self, r: &'a [T]) -> &'a [T] {
-    if self._end == 0 {
-      return r;
-    }
-    let end = self.end(r.len());
-    &r[..end]
-  }
-
   pub fn end(&self, total: usize) -> usize {
     if total == 0 {
       return 0;
     }
-    if self._end >= 0 {
+    if self._end == 0 {
+      return total;
+    }
+    if self._end > 0 {
       (total).min(self._end as usize)
     } else {
       0.max(total as i32 + self._end) as usize

@@ -19,18 +19,17 @@ pub fn ta_backfill<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r[..start].fill(NumT::nan());
 
       let mut last_valid = NumT::nan();
 
-      for i in start..x.len() {
+      for i in start..end {
         let val = x[i];
         if is_normal(&val) {
           last_valid = val;
@@ -59,13 +58,12 @@ pub fn ta_count_nans<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       let mut nan_count: usize = 0;
@@ -78,7 +76,7 @@ pub fn ta_count_nans<NumT: Float + Send + Sync>(
         }
       }
 
-      for i in start..x.len() {
+      for i in start..end {
         let val = x[i];
         if !is_normal(&val) {
           nan_count += 1;

@@ -19,17 +19,16 @@ pub fn ta_var<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       if ctx.is_skip_nan() {
-        let iter = SkipNanWindow::new(x, periods, start);
+        let iter = SkipNanWindow::new(&x[..end], periods, start);
         let mut sum = NumT::zero();
         let mut sum_sq = NumT::zero();
 
@@ -93,7 +92,7 @@ pub fn ta_var<NumT: Float + Send + Sync>(
           }
         }
 
-        for i in start..x.len() {
+        for i in start..end {
           let val = x[i];
 
           if is_normal(&val) {
@@ -164,9 +163,6 @@ pub fn ta_cov<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), x.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let x = ctx.align_end(x);
-  let y = ctx.align_end(y);
 
   let chunk_size = ctx.chunk_size(r.len());
 
@@ -175,6 +171,7 @@ pub fn ta_cov<NumT: Float + Send + Sync>(
     .zip(y.par_chunks(chunk_size))
     .for_each(|((r, x), y)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       if ctx.is_skip_nan() {
@@ -185,7 +182,7 @@ pub fn ta_cov<NumT: Float + Send + Sync>(
 
         let mut win_start = start;
 
-        for i in start..r.len() {
+        for i in start..end {
           let val_x = x[i];
           let val_y = y[i];
           let is_valid = is_normal(&val_x) && is_normal(&val_y);
@@ -256,7 +253,7 @@ pub fn ta_cov<NumT: Float + Send + Sync>(
           }
         }
 
-        for i in start..r.len() {
+        for i in start..end {
           let val_x = x[i];
           let val_y = y[i];
           let is_valid = is_normal(&val_x) && is_normal(&val_y);
@@ -321,9 +318,6 @@ pub fn ta_corr2<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), x.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let x = ctx.align_end(x);
-  let y = ctx.align_end(y);
 
   let chunk_size = ctx.chunk_size(r.len());
 
@@ -332,6 +326,7 @@ pub fn ta_corr2<NumT: Float + Send + Sync>(
     .zip(y.par_chunks(chunk_size))
     .for_each(|((r, x), y)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       if ctx.is_skip_nan() {
@@ -344,7 +339,7 @@ pub fn ta_corr2<NumT: Float + Send + Sync>(
 
         let mut win_start = start;
 
-        for i in start..r.len() {
+        for i in start..end {
           let val_x = x[i];
           let val_y = y[i];
           let is_valid = is_normal(&val_x) && is_normal(&val_y);
@@ -439,7 +434,7 @@ pub fn ta_corr2<NumT: Float + Send + Sync>(
           }
         }
 
-        for i in start..r.len() {
+        for i in start..end {
           let val_x = x[i];
           let val_y = y[i];
           let is_valid = is_normal(&val_x) && is_normal(&val_y);
@@ -525,9 +520,6 @@ pub fn ta_regbeta<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), y.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let y = ctx.align_end(y);
-  let x = ctx.align_end(x);
 
   let chunk_size = ctx.chunk_size(r.len());
 
@@ -536,6 +528,7 @@ pub fn ta_regbeta<NumT: Float + Send + Sync>(
     .zip(x.par_chunks(chunk_size))
     .for_each(|((r, y), x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       if ctx.is_skip_nan() {
@@ -546,7 +539,7 @@ pub fn ta_regbeta<NumT: Float + Send + Sync>(
         let mut no_nan_count = 0;
         let mut win_start = start;
 
-        for i in start..r.len() {
+        for i in start..end {
           let val_x = x[i];
           let val_y = y[i];
           let is_valid = is_normal(&val_x) && is_normal(&val_y);
@@ -621,7 +614,7 @@ pub fn ta_regbeta<NumT: Float + Send + Sync>(
           }
         }
 
-        for i in start..r.len() {
+        for i in start..end {
           let val_x = x[i];
           let val_y = y[i];
           let is_valid = is_normal(&val_x) && is_normal(&val_y);
@@ -691,9 +684,6 @@ pub fn ta_regresi<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), y.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let y = ctx.align_end(y);
-  let x = ctx.align_end(x);
 
   let chunk_size = ctx.chunk_size(r.len());
 
@@ -702,6 +692,7 @@ pub fn ta_regresi<NumT: Float + Send + Sync>(
     .zip(x.par_chunks(chunk_size))
     .for_each(|((r, y), x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       if ctx.is_skip_nan() {
@@ -712,7 +703,7 @@ pub fn ta_regresi<NumT: Float + Send + Sync>(
         let mut no_nan_count = 0;
         let mut win_start = start;
 
-        for i in start..r.len() {
+        for i in start..end {
           let val_x = x[i];
           let val_y = y[i];
           let is_valid = is_normal(&val_x) && is_normal(&val_y);
@@ -791,7 +782,7 @@ pub fn ta_regresi<NumT: Float + Send + Sync>(
           }
         }
 
-        for i in start..r.len() {
+        for i in start..end {
           let val_x = x[i];
           let val_y = y[i];
           let is_valid = is_normal(&val_x) && is_normal(&val_y);

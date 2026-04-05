@@ -26,10 +26,6 @@ pub fn ta_fret<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), open.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let open = ctx.align_end(open);
-  let close = ctx.align_end(close);
-  let is_calc = ctx.align_end(is_calc);
 
   let groups = ctx.groups();
   let group_size = ctx.chunk_size(r.len());
@@ -37,10 +33,6 @@ pub fn ta_fret<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), group_size * groups));
   }
 
-  let r = ctx.align_end_mut(r);
-  let open = ctx.align_end(open);
-  let close = ctx.align_end(close);
-  let is_calc = ctx.align_end(is_calc);
 
   r.par_chunks_mut(group_size)
     .zip(open.par_chunks(group_size))
@@ -48,6 +40,7 @@ pub fn ta_fret<NumT: Float + Send + Sync>(
     .zip(is_calc.par_chunks(group_size))
     .for_each(|(((r, o), c), m)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       if periods == 0 {
@@ -57,8 +50,8 @@ pub fn ta_fret<NumT: Float + Send + Sync>(
       let exit_offset = periods + delay - 1;
       let max_offset = std::cmp::max(exit_offset, delay);
 
-      let end_idx = if c.len() > max_offset {
-        c.len() - max_offset
+      let end_idx = if end > max_offset {
+        end - max_offset
       } else {
         0
       };

@@ -23,8 +23,6 @@ pub fn ta_entropy<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   let bins = if bins == 0 { 10 } else { bins };
 
@@ -32,13 +30,14 @@ pub fn ta_entropy<NumT: Float + Send + Sync>(
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       // We need to collect window values to compute entropy,
       // since we need min/max for binning.
       let mut window: Vec<NumT> = Vec::with_capacity(periods);
 
-      for i in start..x.len() {
+      for i in start..end {
         let val = x[i];
 
         // Add new value

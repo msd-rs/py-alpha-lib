@@ -19,19 +19,18 @@ pub fn ta_ref<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       if ctx.is_skip_nan() {
         let mut history = std::collections::VecDeque::new();
         // pre-fill logic if needed? NO, simple scan.
-        for i in start..x.len() {
+        for i in start..end {
           let val = x[i];
           if is_normal(&val) {
             history.push_back(val);
@@ -43,7 +42,7 @@ pub fn ta_ref<NumT: Float + Send + Sync>(
         }
       } else {
         // Normal mode
-        for i in start..x.len() {
+        for i in start..end {
           if i >= periods {
             r[i] = x[i - periods];
           }
@@ -66,18 +65,17 @@ pub fn ta_barslast<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       let mut last_idx: Option<usize> = None;
 
-      for i in start..x.len() {
+      for i in start..end {
         let is_true = x[i];
 
         if is_true {
@@ -104,18 +102,17 @@ pub fn ta_barssince<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       let mut first_idx: Option<usize> = None;
 
-      for i in start..x.len() {
+      for i in start..end {
         let is_true = x[i];
 
         if first_idx.is_none() {
@@ -147,19 +144,18 @@ pub fn ta_count<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
       if periods == 0 {
         // Cumulative count
         let mut count = 0;
-        for i in start..x.len() {
+        for i in start..end {
           let is_true = x[i];
           if is_true {
             count += 1;
@@ -184,7 +180,7 @@ pub fn ta_count<NumT: Float + Send + Sync>(
           }
         }
 
-        for i in start..x.len() {
+        for i in start..end {
           // Add new
           if x[i] {
             current_true_count += 1;

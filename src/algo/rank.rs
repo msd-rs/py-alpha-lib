@@ -63,8 +63,6 @@ pub fn ta_rank<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   if periods == 1 {
     r.fill(NumT::from(1.0).unwrap());
@@ -75,13 +73,14 @@ pub fn ta_rank<NumT: Float + Send + Sync>(
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
       let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
       r.fill(NumT::nan());
       // Track counts per unique value to handle duplicates correctly.
       let mut rank_window: BTreeMap<OrderedFloat<NumT>, u32> = BTreeMap::new();
       let mut nan_count: usize = 0;
       let mut window_size: usize = 0;
 
-      for i in start..x.len() {
+      for i in start..end {
         let val = x[i];
 
         // Add current value to window
@@ -166,8 +165,6 @@ pub fn ta_cc_rank<NumT: Float + Send + Sync + Debug>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   let group_size = ctx.chunk_size(r.len()) as usize;
   let groups = ctx.groups() as usize;
@@ -181,8 +178,6 @@ pub fn ta_cc_rank<NumT: Float + Send + Sync + Debug>(
     return Err(Error::LengthMismatch(r.len(), group_size * groups));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   let r = UnsafePtr::new(r.as_mut_ptr(), r.len());
   (0..group_size).into_par_iter().for_each(|j| {
@@ -256,8 +251,6 @@ pub fn ta_bins<NumT: Float + Send + Sync + Debug>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   let group_size = ctx.chunk_size(r.len()) as usize;
   let groups = ctx.groups() as usize;
@@ -266,8 +259,6 @@ pub fn ta_bins<NumT: Float + Send + Sync + Debug>(
     return Err(Error::LengthMismatch(r.len(), group_size * groups));
   }
 
-  let r = ctx.align_end_mut(r);
-  let input = ctx.align_end(input);
 
   // If bins is 0 or 1, everything is bin 0 (or error?)
   // If bins=1, all 0.
