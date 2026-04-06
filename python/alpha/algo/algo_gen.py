@@ -623,6 +623,30 @@ def PRODUCT(
     _algo.product(r, input, periods)
     return r
 
+def QUANTILE(
+  input: np.ndarray | list[np.ndarray], periods: int, q: float
+) -> np.ndarray | list[np.ndarray]:
+  """
+  Calculate rolling quantile over a moving window
+  
+  QUANTILE(x, d, q) returns the q-th quantile (0 <= q <= 1) of values
+  in the preceding d periods. Uses linear interpolation between data points
+  (matching numpy/pandas percentile with interpolation='linear').
+  NaN values are excluded from the computation. Requires at least 1 valid value.
+  
+  Ref: https://numpy.org/doc/stable/reference/generated/numpy.quantile.html
+  """
+  if isinstance(input, list):
+    input = [_to_f64(x) for x in input]
+    r = [np.empty_like(x) for x in input]
+    _algo.quantile(r, input, periods, q)
+    return r
+  else:
+    input = _to_f64(input)
+    r = np.empty_like(input)
+    _algo.quantile(r, input, periods, q)
+    return r
+
 def RANK(
   input: np.ndarray | list[np.ndarray], periods: int
 ) -> np.ndarray | list[np.ndarray]:

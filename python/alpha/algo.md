@@ -33,6 +33,7 @@ the `np.ndarray` is `ndarray` type in `numpy` package
 - MOMENT(input: np.ndarray[float], periods: int, k: int): Calculate rolling k-th central moment over a moving window  MOMENT(x, d, k) = mean((x - mean)^k) over window of d periods. This is the raw (non-adjusted) sample moment. k=2 gives variance (population), k=3 gives raw third moment, etc.
 - NEUTRALIZE(category: np.ndarray[float], input: np.ndarray[float]): Neutralize the effect of a categorical variable on a numeric variable
 - PRODUCT(input: np.ndarray[float], periods: int): Calculate product of values in preceding `periods` window  If periods is 0, it calculates the cumulative product from the first valid value.
+- QUANTILE(input: np.ndarray[float], periods: int, q: float): Calculate rolling quantile over a moving window  QUANTILE(x, d, q) returns the q-th quantile (0 <= q <= 1) of values in the preceding d periods. Uses linear interpolation between data points (matching numpy/pandas percentile with interpolation='linear'). NaN values are excluded from the computation. Requires at least 1 valid value.
 - RANK(input: np.ndarray[float], periods: int): Calculate rank in a sliding window with size `periods`  Uses min-rank method for ties (same as pandas rankdata method='min'). NaN values are treated as larger than all non-NaN values.
 - RCROSS(a: np.ndarray[float], b: np.ndarray[float]): For 2 arrays A and B, return true if A[i-1] > B[i-1] and A[i] <= B[i] alias: death_cross, cross_le
 - REF(input: np.ndarray[float], periods: int): Right shift input array by `periods`, r[i] = input[i - periods]
