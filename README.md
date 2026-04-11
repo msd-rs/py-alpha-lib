@@ -188,6 +188,7 @@ Naming Rules:
 | MOMENT | Calculate rolling k-th central moment over a moving window |
 | NEUTRALIZE | Neutralize the effect of a categorical variable on a numeric variable |
 | PRODUCT | Calculate product of values in preceding `periods` window |
+| QUANTILE | Calculate rolling quantile over a moving window |
 | RANK | Calculate rank in a sliding window with size `periods` |
 | RCROSS | For 2 arrays A and B, return true if A[i-1] > B[i-1] and A[i] <= B[i] alias: death_cross, cross_le |
 | REF | Right shift input array by `periods`, r[i] = input[i - periods] |
