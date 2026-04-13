@@ -1,5 +1,11 @@
 # ChangeLog
 
+## [0.2.3] - 2026-04-13
+
+### Added
+
+- ExecContext: TS_QUANTILE, SLOPE, INTERCEPT, DMA, SUMBARS, BARSLAST, BARSSINCE, BINS, FRET, RCROSS, RLONGCROSS
+
 ## [0.2.2] - 2026-04-11
 
 ### Added

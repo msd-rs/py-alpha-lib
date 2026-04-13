@@ -249,6 +249,9 @@ class ExecContext:
     else:
       return alpha.SMA(a, int(args[0]), int(args[1]))
 
+  def DMA(self, a: np.ndarray, weight: float) -> np.ndarray:
+    return alpha.DMA(a, float(weight))
+
   # ── TS: Std Dev / Variance ─────────────────────────────────────────
   #   BRAIN: ts_std_dev    GTJA: STD               wq101: STDDEV
 
@@ -315,6 +318,11 @@ class ExecContext:
 
   TSRANK = TS_RANK  # gtja191
 
+  # ── TS: Quantile ────────────────────────────────────────────────────
+
+  def TS_QUANTILE(self, a: np.ndarray, w: int, q: float) -> np.ndarray:
+    return alpha.QUANTILE(a, int(w), q)
+
   # ── TS: Delay / Delta ──────────────────────────────────────────────
   #   BRAIN: ts_delay, ts_delta
   #   wq101: DELAY, DELTA
@@ -364,6 +372,14 @@ class ExecContext:
 
   REGRESI = TS_REGRESI  # gtja191
 
+  # ── TS: Slope / Intercept ───────────────────────────────────────
+
+  def SLOPE(self, a: np.ndarray, w: int) -> np.ndarray:
+    return alpha.SLOPE(a, int(w))
+
+  def INTERCEPT(self, a: np.ndarray, w: int) -> np.ndarray:
+    return alpha.INTERCEPT(a, int(w))
+
   # ── TS: Counting / Conditional ─────────────────────────────────────
   #   GTJA: COUNT, SUMIF
 
@@ -378,6 +394,17 @@ class ExecContext:
     )
 
   SUMIF = TS_SUMIF  # gtja191
+
+  def SUMBARS(self, a: np.ndarray, amount: float) -> np.ndarray:
+    return alpha.SUMBARS(a, amount)
+
+  # ── TS: Bar Counting ──────────────────────────────────────────
+
+  def BARSLAST(self, cond: np.ndarray) -> np.ndarray:
+    return alpha.BARSLAST(np.asarray(cond, dtype=bool))
+
+  def BARSSINCE(self, cond: np.ndarray) -> np.ndarray:
+    return alpha.BARSSINCE(np.asarray(cond, dtype=bool))
 
   # ── TS: Conditional Scan (SELF recursion) ───────────────────────────
   #   GTJA: SELF-referencing patterns
@@ -440,6 +467,16 @@ class ExecContext:
   def TS_MOMENT(self, a: np.ndarray, w: int, k: int = 2) -> np.ndarray:
     return alpha.MOMENT(a, int(w), int(k))
 
+  # ── TS: Binning ────────────────────────────────────────────────
+
+  def BINS(self, a: np.ndarray, n: int) -> np.ndarray:
+    return alpha.BINS(a, int(n))
+
+  # ── TS: Future Return ──────────────────────────────────────────
+
+  def FRET(self, open: np.ndarray, close: np.ndarray, is_calc: np.ndarray, delay: int, periods: int) -> np.ndarray:
+    return alpha.FRET(open, close, is_calc, int(delay), int(periods))
+
   # ── TS: Cross Detection ────────────────────────────────────────────
   #   AmiBroker/GTJA: CROSS, LONGCROSS
 
@@ -448,6 +485,12 @@ class ExecContext:
 
   def LONGCROSS(self, a: np.ndarray, b: np.ndarray, n: int) -> np.ndarray:
     return alpha.LONGCROSS(a, b, int(n))
+
+  def RCROSS(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    return alpha.RCROSS(a, b)
+
+  def RLONGCROSS(self, a: np.ndarray, b: np.ndarray, n: int) -> np.ndarray:
+    return alpha.RLONGCROSS(a, b, int(n))
 
   # ====================================================================
   #  Cross-Sectional Operators (no prefix)
