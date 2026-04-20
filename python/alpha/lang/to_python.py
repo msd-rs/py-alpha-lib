@@ -119,7 +119,7 @@ class AlphaTransformer(Transformer):
     for arg in args:
       try:
         val = float(arg)
-        if '.' in arg and val == val:
+        if '.' in arg and val == arg:
           arg = str(round(val))
       except (ValueError, TypeError):
         pass
