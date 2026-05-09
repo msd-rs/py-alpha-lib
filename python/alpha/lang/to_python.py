@@ -117,14 +117,24 @@ class AlphaTransformer(Transformer):
   def arguments(self, *args):
     rounded = []
     for arg in args:
-      try:
-        val = float(arg)
-        if '.' in arg and val == arg:
-          arg = str(round(val))
-      except (ValueError, TypeError):
-        pass
-      rounded.append(arg)
+      if isinstance(arg, tuple):
+        name, val = arg
+        rounded.append(f"{name}={val}")
+      else:
+        try:
+          val = float(arg)
+          if '.' in arg and val == arg:
+            arg = str(round(val))
+        except (ValueError, TypeError):
+          pass
+        rounded.append(arg)
     return ", ".join(rounded)
+
+  def named_argument(self, name, assign, value):
+    name_str = str(name)
+    if name_str.startswith("ctx('") and name_str.endswith("')"):
+      name_str = name_str[5:-2]
+    return (name_str, value)
 
   def NAME(self, name):
     name = str(name)

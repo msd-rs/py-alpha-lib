@@ -35,7 +35,9 @@ start: expression
 !mul_op: STAR | DIV
 
 func_call: NAME "(" [arguments] ")"
-arguments: expression ("," expression)*
+arguments: argument ("," argument)*
+?argument: expression
+        | NAME ASSIGN expression -> named_argument
 
 // Terminals
 SELF: "SELF"
@@ -44,6 +46,7 @@ MINUS: "-"
 STAR: "*"
 DIV: "/"
 POWER: "^"
+ASSIGN: "="
 NUMBER: /\d+(\.\d*)?|\.\d+/
 NAME: /[a-zA-Z_]\w*/
 
