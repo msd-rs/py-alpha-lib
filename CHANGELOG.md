@@ -1,5 +1,12 @@
 # ChangeLog
 
+## [0.2.5] - 2026-05-11
+
+### Added
+
+-  Factor Expression translator now support named arguments
+
+
 
 ## [0.2.4] - 2026-04-27
 
