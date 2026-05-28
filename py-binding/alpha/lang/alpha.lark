@@ -1,0 +1,54 @@
+start: expression
+
+?expression: ternary_expr
+
+?ternary_expr: logical_or_expr "?" ternary_expr ":" ternary_expr
+             | logical_or_expr
+
+?logical_or_expr: logical_and_expr ("||" logical_and_expr)*
+
+?logical_and_expr: comparison_expr ("&&" comparison_expr)*
+
+?comparison_expr: sum "==" sum -> eq
+                | sum "!=" sum -> ne
+                | sum "<" sum  -> lt
+                | sum ">" sum  -> gt
+                | sum "<=" sum -> le
+                | sum ">=" sum -> ge
+                | sum
+
+?sum: product (add_op product)*
+
+?product: power (mul_op power)*
+
+?power: atom (POWER atom)*
+
+?atom: MINUS atom -> neg
+     | func_call
+     | NUMBER
+     | SELF
+     | NAME
+     | NAME "." NAME -> dotted_name
+     | "(" expression ")"
+
+!add_op: PLUS | MINUS
+!mul_op: STAR | DIV
+
+func_call: NAME "(" [arguments] ")"
+arguments: argument ("," argument)*
+?argument: expression
+        | NAME ASSIGN expression -> named_argument
+
+// Terminals
+SELF: "SELF"
+PLUS: "+"
+MINUS: "-"
+STAR: "*"
+DIV: "/"
+POWER: "^"
+ASSIGN: "="
+NUMBER: /\d+(\.\d*)?|\.\d+/
+NAME: /[a-zA-Z_]\w*/
+
+%import common.WS
+%ignore WS

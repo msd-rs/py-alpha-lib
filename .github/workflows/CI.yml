@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -27,6 +27,7 @@ jobs:
         env:
           RUSTFLAGS: "-C target-feature=+sse4.2 -C target-feature=+avx2 -C target-feature=+pclmulqdq"
         with:
+          working-directory: ./py-binding
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
@@ -35,7 +36,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wheels-linux-${{ matrix.platform.target }}
-          path: dist
+          path: ./py-binding/dist
 
   musllinux:
     runs-on: ${{ matrix.platform.runner }}
@@ -54,6 +55,7 @@ jobs:
         env:
           RUSTFLAGS: "-C target-feature=+sse4.2 -C target-feature=+avx2 -C target-feature=+pclmulqdq"
         with:
+          working-directory: ./py-binding
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
@@ -62,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wheels-musllinux-${{ matrix.platform.target }}
-          path: dist
+          path: ./py-binding/dist
 
   windows:
     runs-on: ${{ matrix.platform.runner }}
@@ -82,6 +84,7 @@ jobs:
         env:
           RUSTFLAGS: "-C target-feature=+sse4.2 -C target-feature=+avx2 -C target-feature=+pclmulqdq"
         with:
+          working-directory: ./py-binding
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
@@ -89,7 +92,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wheels-windows-${{ matrix.platform.target }}
-          path: dist
+          path: ./py-binding/dist
 
   macos:
     runs-on: ${{ matrix.platform.runner }}
@@ -106,6 +109,7 @@ jobs:
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
+          working-directory: ./py-binding
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
@@ -113,7 +117,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wheels-macos-${{ matrix.platform.target }}
-          path: dist
+          path: ./py-binding/dist
 
   sdist:
     runs-on: ubuntu-latest
@@ -123,12 +127,13 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           command: sdist
+          working-directory: ./py-binding
           args: --out dist
       - name: Upload sdist
         uses: actions/upload-artifact@v4
         with:
           name: wheels-sdist
-          path: dist
+          path: ./py-binding/dist
 
   release:
     name: Release
