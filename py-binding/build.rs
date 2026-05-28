@@ -1810,7 +1810,7 @@ fn build_algo_md(functions: &Vec<TaFunc>) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-  let src_dir = "src/algo";
+  let src_dir = "../alpha-algo/src/algo";
   let dir = fs::read_dir(src_dir)?;
   let mut functions = Vec::new();
   for entry in dir {

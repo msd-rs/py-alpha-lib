@@ -3,24 +3,26 @@
 
 use std::fmt::Display;
 
+#[cfg(feature = "py-binding")]
 use pyo3::FromPyObject;
 
 /// Context information for the how to calculate the result
-#[derive(Debug, Default, Clone, Copy, FromPyObject)]
+#[derive(Debug, Default, Clone, Copy)]
+#[cfg_attr(feature = "py-binding", derive(FromPyObject))]
 pub struct Context {
   /// only calculate from this index, 0 means from the first, -1 means from the last
-  #[pyo3(attribute("start"))]
+  #[cfg_attr(feature = "py-binding", pyo3(attribute("start")))]
   pub _start: i32,
   /// only calculate up to this index, 0 means up to the last, -1 means up to the second last
-  #[pyo3(attribute("end"))]
+  #[cfg_attr(feature = "py-binding", pyo3(attribute("end")))]
   pub _end: i32,
   /// number of groups, indicates the group count of the input data,
   /// the input data is chunked by group, and each group is calculated independently
   /// 0 means no group, which is the same as 1
-  #[pyo3(attribute("groups"))]
+  #[cfg_attr(feature = "py-binding", pyo3(attribute("groups")))]
   pub _groups: u32,
   /// flags, indicates the calculation flags
-  #[pyo3(attribute("flags"))]
+  #[cfg_attr(feature = "py-binding", pyo3(attribute("flags")))]
   pub _flags: u64,
 }
 

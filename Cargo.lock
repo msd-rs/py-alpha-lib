@@ -6,12 +6,23 @@ version = 4
 name = "alpha"
 version = "0.2.5"
 dependencies = [
+ "alpha-algo",
  "anyhow",
  "log",
  "num-traits",
  "numpy",
  "pyo3",
  "pyo3-log",
+ "rayon",
+ "thiserror",
+]
+
+[[package]]
+name = "alpha-algo"
+version = "0.2.5"
+dependencies = [
+ "num-traits",
+ "pyo3",
  "rayon",
  "thiserror",
 ]

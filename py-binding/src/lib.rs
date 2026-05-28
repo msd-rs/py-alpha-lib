@@ -1,12 +1,10 @@
 // Copyright 2026 MSD-RS Project LiJia
 // SPDX-License-Identifier: BSD-2-Clause
 
-mod algo;
 use std::sync::{LazyLock, RwLock};
 
+use alpha_algo::Context;
 use pyo3::prelude::*;
-
-use crate::algo::Context;
 
 static _ALGO_CTX_: LazyLock<RwLock<Context>> = LazyLock::new(|| RwLock::new(Context::default()));
 
@@ -18,7 +16,7 @@ mod algo_impl {
 
   use crate::_ALGO_CTX_;
 
-  use super::algo::*;
+  use alpha_algo::*;
 
   fn ctx<'py>(_py: Python<'py>) -> Context {
     let ctx = match _ALGO_CTX_.try_read() {

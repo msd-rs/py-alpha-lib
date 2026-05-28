@@ -1,0 +1,20 @@
+[package]
+name = "alpha-algo"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "alpha_algo"
+crate-type = ["rlib"]
+doctest = false
+
+[features]
+py-binding = ["dep:pyo3"]
+
+[dependencies]
+thiserror.workspace = true
+num-traits.workspace = true
+rayon.workspace = true
+pyo3 = { workspace = true, optional = true }
