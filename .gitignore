@@ -81,3 +81,5 @@ cargo.lock
 al_alpha101.csv
 al_timing.csv
 comparison_results.csv
+
+.claude

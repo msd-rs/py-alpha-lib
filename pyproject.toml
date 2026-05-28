@@ -19,7 +19,7 @@ license = { file = "LICENSE" }
 authors = [{ name = "ElseJJ" }]
 
 [project.urls]
-repository = "https://github.com/tic-top/py-alpha-lib"
+repository = "https://github.com/msd-rs/py-alpha-lib"
 
 [build-system]
 requires = ["maturin>=1.10,<2.0"]
