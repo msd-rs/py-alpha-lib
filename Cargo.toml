@@ -1,17 +1,21 @@
 [workspace]
+members = ["alpha-algo", "js-binding", "py-binding", "lua-binding"]
 resolver = "3"
-members = ["alpha-algo", "py-binding"]
 
 [workspace.package]
 version = "0.2.5"
-edition = "2024"
 authors = ["ElseJJ"]
+edition = "2024"
 
 [workspace.dependencies]
-pyo3 = { version = "0.28" }
-pyo3-log = "0.13"
-thiserror = "2"
-numpy = "0.28"
-num-traits = "0.2"
-rayon = "1.11"
 log = "0.4"
+num-traits = "0.2"
+numpy = "0.28"
+pyo3-log = "0.13"
+rayon = "1.11"
+thiserror = "2"
+anyhow = "1"
+mlua = { version = "0.11", features = ["lua55", "vendored", "anyhow"] }
+
+[workspace.dependencies.pyo3]
+version = "0.28"

@@ -26,6 +26,9 @@ pub struct Context {
   pub _flags: u64,
 }
 
+#[cfg(feature = "lua-binding")]
+impl mlua::UserData for Context {}
+
 /// skip nan when compute
 pub const FLAG_SKIP_NAN: u64 = 1;
 /// strictly follow cycle required, fill nan for not enough data

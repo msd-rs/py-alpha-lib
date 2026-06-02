@@ -171,16 +171,17 @@ mod algo_impl {
     }
   }
 
-  include!(concat!(env!("OUT_DIR"), "/algo_bindings.rs"));
+  include!("./algo_bindings.rs");
 }
 
 #[pymodule]
 fn _algo(m: &Bound<'_, PyModule>) -> PyResult<()> {
   use algo_impl::*;
+
   pyo3_log::init();
 
   m.add_function(wrap_pyfunction!(ema, m)?)?;
   m.add_function(wrap_pyfunction!(set_ctx, m)?)?;
-  algo_impl::register_functions(m)?;
+  register_functions(m)?;
   Ok(())
 }

@@ -21,4 +21,4 @@ log.workspace = true
 alpha-algo = { path = "../alpha-algo", features = ["py-binding"] }
 
 [build-dependencies]
-anyhow = "1"
+anyhow.workspace = true

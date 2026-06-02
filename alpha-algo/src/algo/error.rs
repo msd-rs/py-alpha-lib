@@ -22,3 +22,10 @@ impl From<Error> for PyErr {
     PyValueError::new_err(err.to_string())
   }
 }
+
+#[cfg(feature = "lua-binding")]
+impl From<Error> for mlua::Error {
+  fn from(err: Error) -> Self {
+    mlua::Error::runtime(err.to_string())
+  }
+}

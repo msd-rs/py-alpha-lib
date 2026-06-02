@@ -1,0 +1,47 @@
+program = { SOI ~ statement* ~ EOI }
+statement = { var_def | line_def | expr_stmt }
+
+var_def = { identifier ~ ":=" ~ expr ~ ";" }
+line_def = { identifier ~ ":" ~ expr ~ ("," ~ color)? ~ ("," ~ style)? ~ ";" }
+expr_stmt = { expr ~ ";" }
+
+color = { string | identifier }
+style = { string | identifier }
+
+expr = { ternary }
+ternary = { logical_or ~ ("?" ~ ternary ~ ":" ~ ternary)? }
+logical_or = { logical_and ~ ("||" ~ logical_and)* }
+logical_and = { comparison ~ ("&&" ~ comparison)* }
+comparison = { sum ~ (comparison_op ~ sum)* }
+comparison_op = { "==" | "!=" | "<>" | "<=" | ">=" | "<" | ">" }
+sum = { product ~ (add_op ~ product)* }
+add_op = { "+" | "-" }
+product = { power ~ (mul_op ~ power)* }
+mul_op = { "*" | "/" | "%" }
+power = { atom ~ ("^" ~ atom)* }
+
+atom = {
+    neg
+    | func_call
+    | number
+    | string
+    | self_kw
+    | dotted_name
+    | identifier
+    | "(" ~ expr ~ ")"
+}
+
+neg = { "-" ~ atom }
+self_kw = { "SELF" }
+dotted_name = { identifier ~ "." ~ identifier }
+func_call = { identifier ~ "(" ~ arguments? ~ ")" }
+arguments = { argument ~ ("," ~ argument)* }
+argument = { (identifier ~ "=" ~ expr) | expr }
+
+identifier = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+number = @{ (ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT*) | ("." ~ ASCII_DIGIT+) | ASCII_DIGIT+ }
+string = ${ "\"" ~ (esc_char | !("\"" | "\\") ~ ANY)* ~ "\"" }
+esc_char = @{ "\\" ~ ANY }
+
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" | "//" ~ (!("\r" | "\n") ~ ANY)* }

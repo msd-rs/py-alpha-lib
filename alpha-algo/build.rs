@@ -1,7 +1,7 @@
 use anyhow::{Result, anyhow, bail};
 use std::fmt::Write as FmtWrite;
 use std::io::Write;
-use std::{env, fs, path::Path};
+use std::{fs, path::Path};
 
 /// Type of ta function parameter with name
 #[derive(Debug, Default)]
@@ -174,8 +174,8 @@ fn parse_ta_file<P: AsRef<Path>>(file_name: P) -> Result<Vec<TaFunc>> {
 }
 
 fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
-  let out_dir = env::var("OUT_DIR")?;
-  let mut file = fs::File::create(out_dir + "/algo_bindings.rs")?;
+  let out_dir = "../py-binding/src";
+  let mut file = fs::File::create(format!("{}/algo_bindings.rs", out_dir))?;
 
   let mut code = String::new();
 
@@ -1450,7 +1450,7 @@ fn py_convert_list(ty: &TaType, name: &str) -> String {
 }
 
 fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
-  let out_file = "python/alpha/algo/algo_gen.py";
+  let out_file = "../py-binding/python/alpha/algo/algo_gen.py";
   let mut file = fs::File::create(out_file)?;
 
   writeln!(file, "# Copyright 2026 MSD-RS Project LiJia")?;
@@ -1777,7 +1777,7 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
 }
 
 fn build_algo_md(functions: &Vec<TaFunc>) -> Result<()> {
-  let mut file = fs::File::create("python/alpha/algo.md")?;
+  let mut file = fs::File::create("../py-binding/python/alpha/algo.md")?;
   writeln!(file, "List of available functions with python type hints:")?;
   writeln!(file, "")?;
   writeln!(
@@ -1809,8 +1809,18 @@ fn build_algo_md(functions: &Vec<TaFunc>) -> Result<()> {
   Ok(())
 }
 
+fn build_algo_lua(functions: &Vec<TaFunc>) -> Result<()> {
+  let mut file = fs::File::create("../lua-binding/src/algo_bindings.rs")?;
+  for func in functions {
+    writeln!(file, "")?;
+    writeln!(file, "fn {}()", func.name)?;
+    writeln!(file, "")?;
+  }
+  Ok(())
+}
+
 fn main() -> Result<()> {
-  let src_dir = "../alpha-algo/src/algo";
+  let src_dir = "src/algo";
   let dir = fs::read_dir(src_dir)?;
   let mut functions = Vec::new();
   for entry in dir {
@@ -1826,6 +1836,8 @@ fn main() -> Result<()> {
   functions.sort_by_key(|a| a.name.clone());
 
   build_algo_md(&functions)?;
+
+  build_algo_lua(&functions)?;
 
   // skip ema, we will write it as template by hand
   functions.retain(|f| f.name != "ema");

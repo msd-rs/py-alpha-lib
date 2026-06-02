@@ -1,0 +1,16 @@
+[package]
+name = "lua-alpha-lib"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+
+[dependencies]
+mlua.workspace = true
+alpha-algo = { path = "../alpha-algo", features = ["lua-binding"] }
+anyhow.workspace = true
+pest = { version = "2.8" }
+pest_derive = { version = "2.8" }
