@@ -8,3 +8,4 @@ mod tests;
 
 pub use execute::{Line, LuaExecutor};
 pub use mlang::to_lua;
+pub use numarray::NumArray;

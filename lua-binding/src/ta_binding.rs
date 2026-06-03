@@ -1,6 +1,4 @@
-use std::ops::Deref;
-
-use crate::numarray::NumArray;
+use crate::numarray::{BoolArray, NumArray};
 use alpha_algo::*;
 use mlua::prelude::*;
 
@@ -12,17 +10,42 @@ fn ctx(lua: &Lua) -> LuaUserDataRef<Context> {
     .unwrap()
 }
 
+include!("algo_bindings.rs");
 
-/**
- * template of register all ta functions
-pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
+pub fn register_draw_functions(lua: &Lua) -> LuaResult<()> {
   lua.globals().set(
-    "EMA", // upper case ta function name without `ta_` prefix
-    lua.create_function(|lua, (data, period): (NumArray, usize)| {
-      let mut r = vec![0.0; data.len()];
-      ta_ema::<f64>(&ctx(lua), &mut r, &data, period)?;
-      Ok(NumArray::from(r))
+    "DRAWICON",
+    lua.create_function(|lua, (when, pos, icon): (BoolArray, NumArray, u32)| {
+      if when.len() != pos.len() {
+        return Err(mlua::Error::runtime(
+          "when and pos must have the same length",
+        ));
+      }
+      let t = lua.create_table()?;
+      t.set("kind", "icon")?;
+      t.set("name", "icon")?;
+      t.set("data", pos)?;
+      t.set("when", when)?;
+      t.set("ext_data", icon)?;
+      Ok(t)
     })?,
-  )
+  )?;
+  lua.globals().set(
+    "DRAWTEXT",
+    lua.create_function(|lua, (when, pos, text): (BoolArray, NumArray, String)| {
+      if when.len() != pos.len() {
+        return Err(mlua::Error::runtime(
+          "when and pos must have the same length",
+        ));
+      }
+      let t = lua.create_table()?;
+      t.set("kind", "text")?;
+      t.set("name", "text")?;
+      t.set("data", pos)?;
+      t.set("when", when)?;
+      t.set("ext_data", text)?;
+      Ok(t)
+    })?,
+  )?;
+  Ok(())
 }
-*/

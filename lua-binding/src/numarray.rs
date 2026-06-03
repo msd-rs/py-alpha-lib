@@ -1,6 +1,5 @@
 use mlua::prelude::*;
-use std::cmp::PartialOrd;
-use std::ops::{Add, BitAnd, BitOr, Deref, DerefMut, Div, Mul, Rem, Sub};
+use std::ops::{Add, BitAnd, BitOr, Deref, Div, Mul, Rem, Sub};
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
@@ -15,13 +14,19 @@ pub struct BoolArray {
 
 impl Into<Vec<f64>> for NumArray {
   fn into(self) -> Vec<f64> {
-    self.data.to_vec()
+    match Rc::try_unwrap(self.data) {
+      Ok(data) => data,
+      Err(data) => data.to_vec(),
+    }
   }
 }
 
 impl Into<Vec<bool>> for BoolArray {
   fn into(self) -> Vec<bool> {
-    self.data.to_vec()
+    match Rc::try_unwrap(self.data) {
+      Ok(data) => data,
+      Err(data) => data.to_vec(),
+    }
   }
 }
 
@@ -38,12 +43,6 @@ impl From<Vec<bool>> for BoolArray {
     BoolArray {
       data: Rc::new(data),
     }
-  }
-}
-
-impl NumArray {
-  pub fn new_empty(len: usize) -> NumArray {
-    NumArray::from(vec![0.0; len])
   }
 }
 
@@ -64,7 +63,7 @@ impl Deref for BoolArray {
 }
 
 impl FromLua for NumArray {
-  fn from_lua(value: mlua::Value, lua: &Lua) -> LuaResult<Self> {
+  fn from_lua(value: mlua::Value, _lua: &Lua) -> LuaResult<Self> {
     match value {
       LuaValue::UserData(ud) => ud.borrow::<NumArray>().map(|arr| arr.clone()),
       _ => Err(LuaError::runtime("Unsupported operand type")),
@@ -73,7 +72,7 @@ impl FromLua for NumArray {
 }
 
 impl FromLua for BoolArray {
-  fn from_lua(value: mlua::Value, lua: &Lua) -> LuaResult<Self> {
+  fn from_lua(value: mlua::Value, _lua: &Lua) -> LuaResult<Self> {
     match value {
       LuaValue::UserData(ud) => ud.borrow::<BoolArray>().map(|arr| arr.clone()),
       _ => Err(LuaError::runtime("Unsupported operand type")),

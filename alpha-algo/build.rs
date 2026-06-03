@@ -1811,11 +1811,133 @@ fn build_algo_md(functions: &Vec<TaFunc>) -> Result<()> {
 
 fn build_algo_lua(functions: &Vec<TaFunc>) -> Result<()> {
   let mut file = fs::File::create("../lua-binding/src/algo_bindings.rs")?;
+  let mut code = String::new();
+
+  writeln!(
+    code,
+    "pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {{"
+  )?;
+
   for func in functions {
-    writeln!(file, "")?;
-    writeln!(file, "fn {}()", func.name)?;
-    writeln!(file, "")?;
+    let lua_name = func.name.to_uppercase();
+    let rust_name = format!("ta_{}", func.name);
+
+    // Find the input arrays to determine output length
+    let arrays: Vec<(&String, &TaType)> = func
+      .params
+      .iter()
+      .filter_map(|p| match p {
+        TaType::NumArray(n) => Some((n, p)),
+        TaType::BoolArray(n) => Some((n, p)),
+        _ => None,
+      })
+      .collect();
+
+    if arrays.is_empty() {
+      continue;
+    }
+
+    let output_is_bool = matches!(arrays[0].1, TaType::BoolArray(_));
+
+    // Exclude Context and the first array (output array r) from Lua function parameters
+    let mut lua_inputs = Vec::new();
+    let mut first_array_seen = false;
+    for param in &func.params {
+      match param {
+        TaType::Context(_) => continue,
+        TaType::NumArray(_) | TaType::BoolArray(_) => {
+          if !first_array_seen {
+            first_array_seen = true;
+          } else {
+            lua_inputs.push(param);
+          }
+        }
+        _ => {
+          lua_inputs.push(param);
+        }
+      }
+    }
+
+    // Determine types for the Lua input tuple
+    let param_names: Vec<String> = lua_inputs.iter().map(|p| p.name().to_string()).collect();
+    let param_types: Vec<String> = lua_inputs
+      .iter()
+      .map(|p| match p {
+        TaType::NumArray(_) => "NumArray".to_string(),
+        TaType::BoolArray(_) => "BoolArray".to_string(),
+        TaType::Num(_) => "f64".to_string(),
+        TaType::Int(_) => "usize".to_string(),
+        TaType::Bool(_) => "bool".to_string(),
+        _ => "f64".to_string(),
+      })
+      .collect();
+
+    let closure_args = match lua_inputs.len() {
+      0 => "(): ()".to_string(),
+      1 => format!("({},): ({},)", param_names[0], param_types[0]),
+      _ => format!("({}): ({})", param_names.join(", "), param_types.join(", ")),
+    };
+
+    // Find first input array for sizing
+    let first_input_array = lua_inputs
+      .iter()
+      .find(|p| matches!(p, TaType::NumArray(_) | TaType::BoolArray(_)));
+
+    let len_expr = match first_input_array {
+      Some(arr) => format!("{}.len()", arr.name()),
+      None => "0".to_string(),
+    };
+
+    let r_init = if output_is_bool {
+      format!("vec![false; {}]", len_expr)
+    } else {
+      format!("vec![0.0; {}]", len_expr)
+    };
+
+    let r_wrap = if output_is_bool {
+      "BoolArray::from"
+    } else {
+      "NumArray::from"
+    };
+
+    // Construct the argument list for Rust function call
+    let mut call_args = Vec::new();
+    let mut first_array_seen = false;
+    for param in &func.params {
+      match param {
+        TaType::Context(_) => {
+          call_args.push("&ctx(lua)".to_string());
+        }
+        TaType::NumArray(n) | TaType::BoolArray(n) => {
+          if !first_array_seen {
+            call_args.push("&mut r".to_string());
+            first_array_seen = true;
+          } else {
+            call_args.push(format!("&{}", n));
+          }
+        }
+        TaType::Num(n) | TaType::Int(n) | TaType::Bool(n) => {
+          call_args.push(n.clone());
+        }
+        _ => {}
+      }
+    }
+    let call_args_str = call_args.join(", ");
+
+    writeln!(code, "    lua.globals().set(")?;
+    writeln!(code, "      \"{}\",", lua_name)?;
+    writeln!(code, "      lua.create_function(|lua, {}| {{", closure_args)?;
+    writeln!(code, "        let mut r = {};", r_init)?;
+    writeln!(code, "        {}::<f64>({})?;", rust_name, call_args_str)?;
+    writeln!(code, "        Ok({}(r))", r_wrap)?;
+    writeln!(code, "      }})?,")?;
+    writeln!(code, "    )?;")?;
   }
+
+  writeln!(code, "  Ok(())")?;
+  writeln!(code, "}}")?;
+
+  file.write_all(code.as_bytes())?;
   Ok(())
 }
 

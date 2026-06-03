@@ -1,4 +1,3 @@
-use crate::numarray::register_num_array;
 use crate::to_lua;
 
 #[test]
