@@ -7,5 +7,5 @@ mod ta_binding;
 mod tests;
 
 pub use execute::{Line, LuaExecutor};
-pub use mlang::to_lua;
+pub use mlang::{to_lua, MValue, MRuntime};
 pub use numarray::NumArray;
