@@ -215,6 +215,20 @@ Naming Rules:
 Full function signatures: [python/alpha/algo.md](python/alpha/algo.md)
 
 
+## Other language bindings
+
+This project is `Python` based originally, but for some case `Python` is not available, for example
+
+- You build a stock web app, you want draw an indicator on the chart. 
+- Your application will be deployed to customer's computer, it is not easy to install `Python` on the customer's computer. But `lua` can be embeded in your app.
+
+So we add some other language bindings for this project.
+
+
+- [lua-binding](lua-binding/README.md): Provide a  `UserData` named `NumArray` to do `numpy.ndarray` like operations, and register all ta funtions to lua. So you can use it in your lua application.
+- [js-binding](js-binding/README.md): Provide a `MLang` runtime to execute [mlang](./mlang/README.md) code on the browser. And use canvas to draw the chart.
+
+
 ## Development
 
 Requirements:
