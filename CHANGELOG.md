@@ -1,5 +1,21 @@
 # ChangeLog
 
+
+## [0.3.0] - 2026-06-04
+
+This project is `Python` based originally, but for some case `Python` is not available, for example
+
+- You build a stock web app, you want draw an indicator on the chart. 
+- Your application will be deployed to customer's computer, it is not easy to install `Python` on the customer's computer. But `lua` can be embeded in your app.
+
+So we add some other language bindings for this project.
+
+### Add
+
+- wasm-bindgen binding, so you can use it in your javascript/typescript environment.
+- lua binding, you can use it in some environments which without `python`
+
+
 ## [0.2.5] - 2026-05-11
 
 ### Added

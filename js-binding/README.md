@@ -1,78 +1,83 @@
-<div align="center">
+# Introduction
 
-  <h1><code>wasm-pack-template</code></h1>
+This is a javascript binding for mlang, you can use it to execute the `mlang` code to compute the indicator values. Project is wasm-pack based.
 
-  <strong>A template for kick starting a Rust and WebAssembly project using <a href="https://github.com/rustwasm/wasm-pack">wasm-pack</a>.</strong>
+# Usage
 
-  <h3>
-    <a href="https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html">Tutorial</a>
-    <span> | </span>
-    <a href="https://discordapp.com/channels/442252698964721669/443151097398296587">Chat</a>
-  </h3>
-
-  <sub>Built with Rust and WebAssembly by <a href="https://rustwasm.github.io/">The Rust and WebAssembly Working Group</a></sub>
-</div>
-
-## About
-
-[Read this template tutorial][template-docs].
-
-This template is designed for compiling Rust libraries into WebAssembly and
-publishing the resulting package to NPM.
-
-Be sure to check out [other `wasm-pack` tutorials online][tutorials] for other
-templates and usages of `wasm-pack`.
-
-[tutorials]: https://rustwasm.github.io/docs/wasm-pack/tutorials/index.html
-[template-docs]: https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html
-
-## Usage
-
-### Use `wasm-pack new` to Clone this Template
-
+## install
 ```
-wasm-pack new my-project
-cd my-project
+npm install js-alpha-lib
 ```
 
-### Build with `wasm-pack build`
+## usage
 
-```
-wasm-pack build
-```
+Assuming there is an IKLine definition here
 
-### Test in Headless Browsers with `wasm-pack test`
-
-```
-wasm-pack test --headless --firefox
-```
-
-### Publish to NPM with `wasm-pack publish`
-
-```
-wasm-pack publish
+```typescript
+type IKLine = {
+  time: Float64Array
+  open: Float64Array
+  high: Float64Array
+  low: Float64Array
+  close: Float64Array
+  volume: Float64Array
+  amount: Float64Array
+}
 ```
 
-## Batteries Included
+use this library like this
 
-* [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) for communicating
-  between WebAssembly and JavaScript.
-* [`console_error_panic_hook`](https://github.com/rustwasm/console_error_panic_hook)
-  for logging panic messages to the developer console.
-* `LICENSE-APACHE` and `LICENSE-MIT`: most Rust projects are licensed this way, so these are included for you.
+```typescript
+import { execute, JSLine, NamedArray, NamedValue } from 'js-alpha-lib'
 
-## License
 
-Licensed under either of
+function toNamedArray(kline: IKLine) {
+  return [
+    new NamedArray('open', kline.open),
+    new NamedArray('high', kline.high),
+    new NamedArray('low', kline.low),
+    new NamedArray('close', kline.close),
+    new NamedArray('volume', kline.volume),
+    new NamedArray('amount', kline.amount),
+    new NamedArray('time', kline.time),
+  ]
+}
 
-* Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-* MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+function toNamedValues(params?: Record<string, number>) {
+  if (!params) return []
+  return Object.entries(params).map(([key, value]) => new NamedValue(key, value))
+}
 
-at your option.
+export type MLangLine = {
+  kind: '' | 'icon' | 'text'
+  name: string
+  color?: string
+  data: Float64Array
+  when?: boolean[]
+  extra?: string | number
+}
 
-### Contribution
+function toMlangLine(line: JSLine): MLangLine {
+  return {
+    kind: line.kind as '' | 'icon' | 'text',
+    name: line.name,
+    color: line.color,
+    data: line.data,
+    when: line.when ? Array.from(line.when).map((v) => v > 0) : undefined,
+    extra: line.ext_data as string | number,
+  }
+}
 
-Unless you explicitly state otherwise, any contribution intentionally
-submitted for inclusion in the work by you, as defined in the Apache-2.0
-license, shall be dual licensed as above, without any additional terms or
-conditions.
+const code = `
+MA5: MA(CLOSE, 5);
+MA10: MA(CLOSE, 10);
+`
+const lines = toMLangLine(execute(code, toNamedArray(kline), toNamedValues(params)))
+
+// now lines can be used to plot the chart
+
+```
+
+Because the `JSLine` is on wasm memory, so convert it into a more convenient form for use in the JavaScript environment.
+
+
