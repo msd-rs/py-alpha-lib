@@ -80,7 +80,8 @@ impl Context {
   }
 
   pub fn chunk_size(&self, total: usize) -> usize {
-    total / self.groups()
+    let n = total / self.groups();
+    if n == 0 { 1 } else { n }
   }
 
   /// should skip nan when compute

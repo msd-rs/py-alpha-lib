@@ -1,17 +1,11 @@
 [package]
-name = "lua-alpha-lib"
+name = "mlang"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
-
 [dependencies]
-mlua.workspace = true
-alpha-algo = { path = "../alpha-algo", features = ["lua-binding"] }
+alpha-algo = { path = "../alpha-algo" }
 anyhow.workspace = true
 pest = { version = "2.8" }
 pest_derive = { version = "2.8" }
-mlang = { path = "../mlang" }

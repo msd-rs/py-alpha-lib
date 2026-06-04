@@ -1,5 +1,5 @@
 [workspace]
-members = ["alpha-algo", "js-binding", "py-binding", "lua-binding"]
+members = ["alpha-algo", "js-binding", "py-binding", "lua-binding", "mlang"]
 resolver = "3"
 
 [workspace.package]

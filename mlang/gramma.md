@@ -63,6 +63,3 @@ function compute(D, P)
   return lines
 end
 ```
-
-
-

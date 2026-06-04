@@ -241,6 +241,7 @@ name = "js-alpha-lib"
 version = "0.2.5"
 dependencies = [
  "console_error_panic_hook",
+ "mlang",
  "wasm-bindgen",
  "wasm-bindgen-test",
 ]
@@ -290,6 +291,7 @@ version = "0.2.5"
 dependencies = [
  "alpha-algo",
  "anyhow",
+ "mlang",
  "mlua",
  "pest",
  "pest_derive",
@@ -338,6 +340,16 @@ checksum = "4869b6a491569605d66d3952bcdf03df789e5b536e5f0cf7758a7f08a55ae24d"
 dependencies = [
  "cc",
  "walkdir",
+]
+
+[[package]]
+name = "mlang"
+version = "0.2.5"
+dependencies = [
+ "alpha-algo",
+ "anyhow",
+ "pest",
+ "pest_derive",
 ]
 
 [[package]]

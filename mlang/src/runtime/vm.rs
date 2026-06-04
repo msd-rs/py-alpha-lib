@@ -2,478 +2,20 @@ use anyhow::{Result, anyhow};
 use pest::iterators::Pair;
 use std::collections::HashMap;
 use std::cell::RefCell;
+use pest::Parser;
 
 use crate::numarray::{NumArray, BoolArray};
-use crate::Line;
+use crate::runtime::mvalue::MValue;
 use alpha_algo::Context;
 
-const FLOAT_EPSILON: f64 = 1e-9;
-
-trait FloatExt {
-  fn eq_f(self, other: &f64) -> bool;
-  fn ne_f(self, other: &f64) -> bool;
-  fn lt_f(self, other: &f64) -> bool;
-  fn le_f(self, other: &f64) -> bool;
-  fn gt_f(self, other: &f64) -> bool;
-  fn ge_f(self, other: &f64) -> bool;
-}
-
-impl FloatExt for f64 {
-  fn eq_f(self, other: &f64) -> bool {
-    (self - other).abs() < FLOAT_EPSILON
-  }
-  fn ne_f(self, other: &f64) -> bool {
-    (self - other).abs() >= FLOAT_EPSILON
-  }
-  fn lt_f(self, other: &f64) -> bool {
-    self - other < -FLOAT_EPSILON
-  }
-  fn le_f(self, other: &f64) -> bool {
-    self - other <= FLOAT_EPSILON
-  }
-  fn gt_f(self, other: &f64) -> bool {
-    self - other > FLOAT_EPSILON
-  }
-  fn ge_f(self, other: &f64) -> bool {
-    self - other >= -FLOAT_EPSILON
-  }
-}
-
-#[derive(Debug, Clone)]
-pub enum MValue {
-  Num(f64),
-  Bool(bool),
-  Str(String),
-  NumArray(NumArray),
-  BoolArray(BoolArray),
-}
-
-impl MValue {
-  pub fn to_num_array(&self, len: usize) -> Result<NumArray> {
-    match self {
-      MValue::NumArray(arr) => Ok(arr.clone()),
-      MValue::Num(n) => Ok(NumArray::from(vec![*n; len])),
-      _ => Err(anyhow!("Cannot convert/promote to NumArray: {:?}", self)),
-    }
-  }
-
-  pub fn to_bool_array(&self, len: usize) -> Result<BoolArray> {
-    match self {
-      MValue::BoolArray(arr) => Ok(arr.clone()),
-      MValue::Bool(b) => Ok(BoolArray::from(vec![*b; len])),
-      MValue::Num(n) => Ok(BoolArray::from(vec![*n != 0.0; len])),
-      MValue::NumArray(arr) => {
-        let res = arr.iter().map(|&x| x != 0.0).collect::<Vec<_>>();
-        Ok(BoolArray::from(res))
-      }
-      _ => Err(anyhow!("Cannot convert/promote to BoolArray: {:?}", self)),
-    }
-  }
-
-  pub fn to_bool_val(&self) -> Result<MValue> {
-    match self {
-      MValue::Bool(b) => Ok(MValue::Bool(*b)),
-      MValue::Num(n) => Ok(MValue::Bool(*n != 0.0)),
-      MValue::BoolArray(arr) => Ok(MValue::BoolArray(arr.clone())),
-      MValue::NumArray(arr) => {
-        let res = arr.iter().map(|&x| x != 0.0).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      _ => Err(anyhow!("Cannot convert to boolean value: {:?}", self)),
-    }
-  }
-
-  pub fn add(&self, other: &Self) -> Result<MValue> {
-    match (self, other) {
-      (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Num(a + b)),
-      (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() {
-          return Err(anyhow!("Mismatched array length: {} and {}", a.len(), b.len()));
-        }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x + y).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      (MValue::NumArray(a), MValue::Num(b)) => {
-        let res = a.iter().map(|x| x + b).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      (MValue::Num(a), MValue::NumArray(b)) => {
-        let res = b.iter().map(|x| a + x).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      _ => Err(anyhow!("Invalid types for Add: {:?} and {:?}", self, other)),
-    }
-  }
-
-  pub fn sub(&self, other: &Self) -> Result<MValue> {
-    match (self, other) {
-      (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Num(a - b)),
-      (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() {
-          return Err(anyhow!("Mismatched array length: {} and {}", a.len(), b.len()));
-        }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x - y).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      (MValue::NumArray(a), MValue::Num(b)) => {
-        let res = a.iter().map(|x| x - b).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      (MValue::Num(a), MValue::NumArray(b)) => {
-        let res = b.iter().map(|x| a - x).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      _ => Err(anyhow!("Invalid types for Sub: {:?} and {:?}", self, other)),
-    }
-  }
-
-  pub fn mul(&self, other: &Self) -> Result<MValue> {
-    match (self, other) {
-      (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Num(a * b)),
-      (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() {
-          return Err(anyhow!("Mismatched array length: {} and {}", a.len(), b.len()));
-        }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x * y).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      (MValue::NumArray(a), MValue::Num(b)) => {
-        let res = a.iter().map(|x| x * b).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      (MValue::Num(a), MValue::NumArray(b)) => {
-        let res = b.iter().map(|x| a * x).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      _ => Err(anyhow!("Invalid types for Mul: {:?} and {:?}", self, other)),
-    }
-  }
-
-  pub fn div(&self, other: &Self) -> Result<MValue> {
-    match (self, other) {
-      (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Num(a / b)),
-      (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() {
-          return Err(anyhow!("Mismatched array length: {} and {}", a.len(), b.len()));
-        }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x / y).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      (MValue::NumArray(a), MValue::Num(b)) => {
-        let res = a.iter().map(|x| x / b).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      (MValue::Num(a), MValue::NumArray(b)) => {
-        let res = b.iter().map(|x| a / x).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      _ => Err(anyhow!("Invalid types for Div: {:?} and {:?}", self, other)),
-    }
-  }
-
-  pub fn rem(&self, other: &Self) -> Result<MValue> {
-    match (self, other) {
-      (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Num(a % b)),
-      (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() {
-          return Err(anyhow!("Mismatched array length: {} and {}", a.len(), b.len()));
-        }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x % y).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      (MValue::NumArray(a), MValue::Num(b)) => {
-        let res = a.iter().map(|x| x % b).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      (MValue::Num(a), MValue::NumArray(b)) => {
-        let res = b.iter().map(|x| a % x).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      _ => Err(anyhow!("Invalid types for Rem: {:?} and {:?}", self, other)),
-    }
-  }
-
-  pub fn pow(&self, other: &Self) -> Result<MValue> {
-    match (self, other) {
-      (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Num(a.powf(*b))),
-      (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() {
-          return Err(anyhow!("Mismatched array length: {} and {}", a.len(), b.len()));
-        }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x.powf(*y)).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      (MValue::NumArray(a), MValue::Num(b)) => {
-        let res = a.iter().map(|x| x.powf(*b)).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      (MValue::Num(a), MValue::NumArray(b)) => {
-        let res = b.iter().map(|x| a.powf(*x)).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      _ => Err(anyhow!("Invalid types for Pow: {:?} and {:?}", self, other)),
-    }
-  }
-
-  pub fn neg_op(&self) -> Result<MValue> {
-    match self {
-      MValue::Num(n) => Ok(MValue::Num(-n)),
-      MValue::Bool(b) => Ok(MValue::Bool(!b)),
-      MValue::NumArray(arr) => {
-        let res = arr.iter().map(|&x| -x).collect::<Vec<_>>();
-        Ok(MValue::NumArray(NumArray::from(res)))
-      }
-      MValue::BoolArray(arr) => {
-        let res = arr.iter().map(|&x| !x).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      _ => Err(anyhow!("Cannot negate type: {:?}", self)),
-    }
-  }
-
-  pub fn eq_op(&self, other: &Self) -> Result<MValue> {
-    match (self, other) {
-      (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Bool(a.eq_f(b))),
-      (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x.eq_f(y)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::NumArray(a), MValue::Num(b)) => {
-        let res = a.iter().map(|x| x.eq_f(b)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::Num(a), MValue::NumArray(b)) => {
-        let res = b.iter().map(|x| a.eq_f(x)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::Bool(a), MValue::Bool(b)) => Ok(MValue::Bool(a == b)),
-      (MValue::BoolArray(a), MValue::BoolArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x == y).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::Str(a), MValue::Str(b)) => Ok(MValue::Bool(a == b)),
-      _ => Ok(MValue::Bool(false)),
-    }
-  }
-
-  pub fn ne_op(&self, other: &Self) -> Result<MValue> {
-    match (self, other) {
-      (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Bool(a.ne_f(b))),
-      (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x.ne_f(y)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::NumArray(a), MValue::Num(b)) => {
-        let res = a.iter().map(|x| x.ne_f(b)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::Num(a), MValue::NumArray(b)) => {
-        let res = b.iter().map(|x| a.ne_f(x)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::Bool(a), MValue::Bool(b)) => Ok(MValue::Bool(a != b)),
-      (MValue::BoolArray(a), MValue::BoolArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x != y).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::Str(a), MValue::Str(b)) => Ok(MValue::Bool(a != b)),
-      _ => Ok(MValue::Bool(true)),
-    }
-  }
-
-  pub fn lt_op(&self, other: &Self) -> Result<MValue> {
-    match (self, other) {
-      (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Bool(a.lt_f(b))),
-      (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x.lt_f(y)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::NumArray(a), MValue::Num(b)) => {
-        let res = a.iter().map(|x| x.lt_f(b)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::Num(a), MValue::NumArray(b)) => {
-        let res = b.iter().map(|x| a.lt_f(x)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      _ => Err(anyhow!("Comparison (<) not supported for these types")),
-    }
-  }
-
-  pub fn le_op(&self, other: &Self) -> Result<MValue> {
-    match (self, other) {
-      (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Bool(a.le_f(b))),
-      (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x.le_f(y)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::NumArray(a), MValue::Num(b)) => {
-        let res = a.iter().map(|x| x.le_f(b)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::Num(a), MValue::NumArray(b)) => {
-        let res = b.iter().map(|x| a.le_f(x)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      _ => Err(anyhow!("Comparison (<=) not supported for these types")),
-    }
-  }
-
-  pub fn gt_op(&self, other: &Self) -> Result<MValue> {
-    match (self, other) {
-      (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Bool(a.gt_f(b))),
-      (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x.gt_f(y)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::NumArray(a), MValue::Num(b)) => {
-        let res = a.iter().map(|x| x.gt_f(b)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::Num(a), MValue::NumArray(b)) => {
-        let res = b.iter().map(|x| a.gt_f(x)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      _ => Err(anyhow!("Comparison (>) not supported for these types")),
-    }
-  }
-
-  pub fn ge_op(&self, other: &Self) -> Result<MValue> {
-    match (self, other) {
-      (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Bool(a.ge_f(b))),
-      (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x.ge_f(y)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::NumArray(a), MValue::Num(b)) => {
-        let res = a.iter().map(|x| x.ge_f(b)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::Num(a), MValue::NumArray(b)) => {
-        let res = b.iter().map(|x| a.ge_f(x)).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      _ => Err(anyhow!("Comparison (>=) not supported for these types")),
-    }
-  }
-
-  pub fn and_op(&self, other: &Self) -> Result<MValue> {
-    let lhs = self.to_bool_val()?;
-    let rhs = other.to_bool_val()?;
-    match (lhs, rhs) {
-      (MValue::Bool(a), MValue::Bool(b)) => Ok(MValue::Bool(a && b)),
-      (MValue::BoolArray(a), MValue::BoolArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(&x, &y)| x && y).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::BoolArray(a), MValue::Bool(b)) => {
-        let res = a.iter().map(|&x| x && b).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::Bool(a), MValue::BoolArray(b)) => {
-        let res = b.iter().map(|&x| a && x).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      _ => unreachable!(),
-    }
-  }
-
-  pub fn or_op(&self, other: &Self) -> Result<MValue> {
-    let lhs = self.to_bool_val()?;
-    let rhs = other.to_bool_val()?;
-    match (lhs, rhs) {
-      (MValue::Bool(a), MValue::Bool(b)) => Ok(MValue::Bool(a || b)),
-      (MValue::BoolArray(a), MValue::BoolArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(&x, &y)| x || y).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::BoolArray(a), MValue::Bool(b)) => {
-        let res = a.iter().map(|&x| x || b).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      (MValue::Bool(a), MValue::BoolArray(b)) => {
-        let res = b.iter().map(|&x| a || x).collect::<Vec<_>>();
-        Ok(MValue::BoolArray(BoolArray::from(res)))
-      }
-      _ => unreachable!(),
-    }
-  }
-}
-
-// Implement standard operators for MValue
-impl std::ops::Add for MValue {
-  type Output = MValue;
-  fn add(self, other: Self) -> Self::Output {
-    MValue::add(&self, &other).unwrap()
-  }
-}
-impl<'a, 'b> std::ops::Add<&'b MValue> for &'a MValue {
-  type Output = MValue;
-  fn add(self, other: &'b MValue) -> Self::Output {
-    MValue::add(self, other).unwrap()
-  }
-}
-
-impl std::ops::Sub for MValue {
-  type Output = MValue;
-  fn sub(self, other: Self) -> Self::Output {
-    MValue::sub(&self, &other).unwrap()
-  }
-}
-impl<'a, 'b> std::ops::Sub<&'b MValue> for &'a MValue {
-  type Output = MValue;
-  fn sub(self, other: &'b MValue) -> Self::Output {
-    MValue::sub(self, other).unwrap()
-  }
-}
-
-impl std::ops::Mul for MValue {
-  type Output = MValue;
-  fn mul(self, other: Self) -> Self::Output {
-    MValue::mul(&self, &other).unwrap()
-  }
-}
-impl<'a, 'b> std::ops::Mul<&'b MValue> for &'a MValue {
-  type Output = MValue;
-  fn mul(self, other: &'b MValue) -> Self::Output {
-    MValue::mul(self, other).unwrap()
-  }
-}
-
-impl std::ops::Div for MValue {
-  type Output = MValue;
-  fn div(self, other: Self) -> Self::Output {
-    MValue::div(&self, &other).unwrap()
-  }
-}
-impl<'a, 'b> std::ops::Div<&'b MValue> for &'a MValue {
-  type Output = MValue;
-  fn div(self, other: &'b MValue) -> Self::Output {
-    MValue::div(self, other).unwrap()
-  }
-}
-
-impl std::ops::Rem for MValue {
-  type Output = MValue;
-  fn rem(self, other: Self) -> Self::Output {
-    MValue::rem(&self, &other).unwrap()
-  }
-}
-impl<'a, 'b> std::ops::Rem<&'b MValue> for &'a MValue {
-  type Output = MValue;
-  fn rem(self, other: &'b MValue) -> Self::Output {
-    MValue::rem(self, other).unwrap()
-  }
+#[derive(Debug, Clone, Default)]
+pub struct Line {
+  pub kind: String,
+  pub name: String,
+  pub data: Vec<f64>,
+  pub color: Option<String>,
+  pub when: Option<Vec<bool>>,
+  pub ext_data: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone)]
@@ -538,9 +80,9 @@ pub enum Statement {
   ExprStmt(Expr),
 }
 
-fn build_expr(pair: Pair<super::Rule>) -> Result<Expr> {
+fn build_expr(pair: Pair<crate::Rule>) -> Result<Expr> {
   match pair.as_rule() {
-    super::Rule::expr | super::Rule::ternary => {
+    crate::Rule::expr | crate::Rule::ternary => {
       let mut inner = pair.into_inner();
       let first = build_expr(inner.next().unwrap())?;
       if let Some(true_case_pair) = inner.next() {
@@ -574,7 +116,7 @@ fn build_expr(pair: Pair<super::Rule>) -> Result<Expr> {
         Ok(first)
       }
     }
-    super::Rule::logical_or => {
+    crate::Rule::logical_or => {
       let mut inner = pair.into_inner();
       let mut accum = build_expr(inner.next().unwrap())?;
       while let Some(next_pair) = inner.next() {
@@ -583,7 +125,7 @@ fn build_expr(pair: Pair<super::Rule>) -> Result<Expr> {
       }
       Ok(accum)
     }
-    super::Rule::logical_and => {
+    crate::Rule::logical_and => {
       let mut inner = pair.into_inner();
       let mut accum = build_expr(inner.next().unwrap())?;
       while let Some(next_pair) = inner.next() {
@@ -592,7 +134,7 @@ fn build_expr(pair: Pair<super::Rule>) -> Result<Expr> {
       }
       Ok(accum)
     }
-    super::Rule::comparison => {
+    crate::Rule::comparison => {
       let mut inner = pair.into_inner();
       let mut accum = build_expr(inner.next().unwrap())?;
       while let Some(op_pair) = inner.next() {
@@ -611,7 +153,7 @@ fn build_expr(pair: Pair<super::Rule>) -> Result<Expr> {
       }
       Ok(accum)
     }
-    super::Rule::sum => {
+    crate::Rule::sum => {
       let mut inner = pair.into_inner();
       let mut accum = build_expr(inner.next().unwrap())?;
       while let Some(op_pair) = inner.next() {
@@ -626,7 +168,7 @@ fn build_expr(pair: Pair<super::Rule>) -> Result<Expr> {
       }
       Ok(accum)
     }
-    super::Rule::product => {
+    crate::Rule::product => {
       let mut inner = pair.into_inner();
       let mut accum = build_expr(inner.next().unwrap())?;
       while let Some(op_pair) = inner.next() {
@@ -642,7 +184,7 @@ fn build_expr(pair: Pair<super::Rule>) -> Result<Expr> {
       }
       Ok(accum)
     }
-    super::Rule::power => {
+    crate::Rule::power => {
       let mut inner = pair.into_inner();
       let mut accum = build_expr(inner.next().unwrap())?;
       while let Some(next_pair) = inner.next() {
@@ -651,18 +193,18 @@ fn build_expr(pair: Pair<super::Rule>) -> Result<Expr> {
       }
       Ok(accum)
     }
-    super::Rule::atom => {
+    crate::Rule::atom => {
       build_expr(pair.into_inner().next().unwrap())
     }
-    super::Rule::neg => {
+    crate::Rule::neg => {
       let inner = pair.into_inner().next().unwrap();
       Ok(Expr::Neg(Box::new(build_expr(inner)?)))
     }
-    super::Rule::self_kw => Ok(Expr::SelfKw),
-    super::Rule::dotted_name => {
+    crate::Rule::self_kw => Ok(Expr::SelfKw),
+    crate::Rule::dotted_name => {
       Ok(Expr::DottedName(pair.as_str().to_string()))
     }
-    super::Rule::func_call => {
+    crate::Rule::func_call => {
       let mut inner = pair.into_inner();
       let name = inner.next().unwrap().as_str().to_string();
       let mut args = vec![];
@@ -670,7 +212,7 @@ fn build_expr(pair: Pair<super::Rule>) -> Result<Expr> {
         for arg in args_pair.into_inner() {
           let mut arg_inner = arg.into_inner();
           let first = arg_inner.next().unwrap();
-          if first.as_rule() == super::Rule::identifier && arg_inner.peek().is_some() {
+          if first.as_rule() == crate::Rule::identifier && arg_inner.peek().is_some() {
             let arg_name = first.as_str().to_string();
             let expr = build_expr(arg_inner.next().unwrap())?;
             args.push(FuncArg::Named(arg_name, expr));
@@ -681,14 +223,14 @@ fn build_expr(pair: Pair<super::Rule>) -> Result<Expr> {
       }
       Ok(Expr::FuncCall { name, args })
     }
-    super::Rule::identifier => {
+    crate::Rule::identifier => {
       Ok(Expr::Identifier(pair.as_str().to_string()))
     }
-    super::Rule::number => {
+    crate::Rule::number => {
       let val: f64 = pair.as_str().parse()?;
       Ok(Expr::Num(val))
     }
-    super::Rule::string => {
+    crate::Rule::string => {
       let val = pair.as_str();
       let content = if val.starts_with('"') && val.ends_with('"') {
         &val[1..val.len() - 1]
@@ -701,16 +243,16 @@ fn build_expr(pair: Pair<super::Rule>) -> Result<Expr> {
   }
 }
 
-fn build_statement(pair: Pair<super::Rule>) -> Result<Statement> {
+fn build_statement(pair: Pair<crate::Rule>) -> Result<Statement> {
   let stmt_inner = pair.into_inner().next().unwrap();
   match stmt_inner.as_rule() {
-    super::Rule::var_def => {
+    crate::Rule::var_def => {
       let mut inner = stmt_inner.into_inner();
       let name = inner.next().unwrap().as_str().to_string();
       let expr = build_expr(inner.next().unwrap())?;
       Ok(Statement::VarDef { name, expr })
     }
-    super::Rule::line_def => {
+    crate::Rule::line_def => {
       let mut inner = stmt_inner.into_inner();
       let name = inner.next().unwrap().as_str().to_string();
       let expr = build_expr(inner.next().unwrap())?;
@@ -732,7 +274,7 @@ fn build_statement(pair: Pair<super::Rule>) -> Result<Statement> {
       });
       Ok(Statement::LineDef { name, expr, color, style })
     }
-    super::Rule::expr_stmt => {
+    crate::Rule::expr_stmt => {
       let expr = build_expr(stmt_inner.into_inner().next().unwrap())?;
       Ok(Statement::ExprStmt(expr))
     }
@@ -846,15 +388,14 @@ impl MRuntime {
       return Ok(self.lines());
     }
 
-    use pest::Parser;
-    let parsed = super::MLangParser::parse(super::Rule::program, code)
+    let parsed = crate::MLangParser::parse(crate::Rule::program, code)
       .map_err(|e| anyhow!("Parse error: {}", e))?
       .next()
       .unwrap();
 
     let mut statements = vec![];
     for stmt_pair in parsed.into_inner() {
-      if stmt_pair.as_rule() == super::Rule::EOI {
+      if stmt_pair.as_rule() == crate::Rule::EOI {
         break;
       }
       statements.push(build_statement(stmt_pair)?);
