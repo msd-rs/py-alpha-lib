@@ -1515,9 +1515,9 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
       let c_name = arrays[3].0;
 
       let mut py_params = vec![
-        format!("{}: np.ndarray | list[np.ndarray]", a_name),
-        format!("{}: np.ndarray | list[np.ndarray]", b_name),
-        format!("{}: np.ndarray | list[np.ndarray]", c_name),
+        format!("{}: A", a_name),
+        format!("{}: A", b_name),
+        format!("{}: A", c_name),
       ];
       let mut call_params = vec![
         r_name.as_str(),
@@ -1540,9 +1540,13 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
         }
       }
 
-      writeln!(file, "def {}(", py_func_name)?;
+      writeln!(
+        file,
+        "def {}[A: np.ndarray | list[np.ndarray]](",
+        py_func_name
+      )?;
       writeln!(file, "  {}", py_params.join(", "))?;
-      writeln!(file, ") -> np.ndarray | list[np.ndarray]:")?;
+      writeln!(file, ") -> A:")?;
       if !doc.trim().is_empty() {
         writeln!(file, "  \"\"\"")?;
         writeln!(file, "{}", doc)?;
@@ -1609,10 +1613,7 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
       #[allow(unused)]
       let b_is_bool = matches!(arrays[2].1, TaType::BoolArray(_));
 
-      let mut py_params = vec![
-        format!("{}: np.ndarray | list[np.ndarray]", a_name),
-        format!("{}: np.ndarray | list[np.ndarray]", b_name),
-      ];
+      let mut py_params = vec![format!("{}: A", a_name), format!("{}: A", b_name)];
       let mut call_params = vec![r_name.as_str(), a_name.as_str(), b_name.as_str()];
 
       for param in &func.params {
@@ -1629,9 +1630,13 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
         }
       }
 
-      writeln!(file, "def {}(", py_func_name)?;
+      writeln!(
+        file,
+        "def {}[A: np.ndarray | list[np.ndarray]](",
+        py_func_name
+      )?;
       writeln!(file, "  {}", py_params.join(", "))?;
-      writeln!(file, ") -> np.ndarray | list[np.ndarray]:")?;
+      writeln!(file, ") -> A:")?;
       if !doc.trim().is_empty() {
         writeln!(file, "  \"\"\"")?;
         writeln!(file, "{}", doc)?;
@@ -1702,7 +1707,7 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
     let input_name = arrays[1].0;
     let input_is_bool = matches!(arrays[1].1, TaType::BoolArray(_));
 
-    let mut py_params = vec![format!("{}: np.ndarray | list[np.ndarray]", input_name)];
+    let mut py_params = vec![format!("{}: A", input_name)];
     let mut call_params = vec![r_name.as_str(), input_name.as_str()];
 
     for param in &func.params {
@@ -1722,9 +1727,13 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
     let py_params_str = py_params.join(", ");
     let call_params_str = call_params.join(", ");
 
-    writeln!(file, "def {}(", py_func_name)?;
+    writeln!(
+      file,
+      "def {}[A: np.ndarray | list[np.ndarray]](",
+      py_func_name
+    )?;
     writeln!(file, "  {}", py_params_str)?;
-    writeln!(file, ") -> np.ndarray | list[np.ndarray]:")?;
+    writeln!(file, ") -> A:")?;
     if !doc.trim().is_empty() {
       writeln!(file, "  \"\"\"")?;
       writeln!(file, "{}", doc)?;

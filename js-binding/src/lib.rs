@@ -6,6 +6,8 @@ use std::{collections::HashMap, rc::Rc};
 use mlang::{Context, Line, MRuntime, NumArray};
 use wasm_bindgen::prelude::*;
 
+use crate::utils::set_panic_hook;
+
 #[wasm_bindgen(getter_with_clone)]
 #[derive(Debug, Clone)]
 pub struct JSLine {
@@ -89,6 +91,7 @@ pub fn execute(
   data: Vec<NamedArray>,
   params: Vec<NamedValue>,
 ) -> Result<Vec<JSLine>, JsError> {
+  set_panic_hook();
   let data = data
     .into_iter()
     .map(|NamedArray { name, data }| (name, NumArray::from(data)))

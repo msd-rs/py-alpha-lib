@@ -18,9 +18,9 @@ def _to_bool(a):
     return a
   return a.astype(bool)
 
-def ALPHA(
-  input: np.ndarray | list[np.ndarray], benchmark: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def ALPHA[A: np.ndarray | list[np.ndarray]](
+  input: A, benchmark: A, periods: int
+) -> A:
   """
   Rolling Jensen's Alpha of asset returns against benchmark returns.
   
@@ -42,9 +42,9 @@ def ALPHA(
     _algo.alpha(r, input, benchmark, periods)
     return r
 
-def BACKFILL(
-  input: np.ndarray | list[np.ndarray]
-) -> np.ndarray | list[np.ndarray]:
+def BACKFILL[A: np.ndarray | list[np.ndarray]](
+  input: A
+) -> A:
   """
   Forward-fill NaN values with the last valid observation
   
@@ -62,9 +62,9 @@ def BACKFILL(
     _algo.backfill(r, input)
     return r
 
-def BARSLAST(
-  input: np.ndarray | list[np.ndarray]
-) -> np.ndarray | list[np.ndarray]:
+def BARSLAST[A: np.ndarray | list[np.ndarray]](
+  input: A
+) -> A:
   """
   Calculate number of bars since last condition true
   
@@ -81,9 +81,9 @@ def BARSLAST(
     _algo.barslast(r, input)
     return r
 
-def BARSSINCE(
-  input: np.ndarray | list[np.ndarray]
-) -> np.ndarray | list[np.ndarray]:
+def BARSSINCE[A: np.ndarray | list[np.ndarray]](
+  input: A
+) -> A:
   """
   Calculate number of bars since first condition true
   
@@ -100,9 +100,9 @@ def BARSSINCE(
     _algo.barssince(r, input)
     return r
 
-def BETA(
-  input: np.ndarray | list[np.ndarray], benchmark: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def BETA[A: np.ndarray | list[np.ndarray]](
+  input: A, benchmark: A, periods: int
+) -> A:
   """
   Rolling Beta coefficient of asset returns against benchmark returns.
   
@@ -124,9 +124,9 @@ def BETA(
     _algo.beta(r, input, benchmark, periods)
     return r
 
-def BINS(
-  input: np.ndarray | list[np.ndarray], bins: int
-) -> np.ndarray | list[np.ndarray]:
+def BINS[A: np.ndarray | list[np.ndarray]](
+  input: A, bins: int
+) -> A:
   """
   Discretize the input into n bins, the ctx.groups() is the number of groups
   
@@ -144,9 +144,9 @@ def BINS(
     _algo.bins(r, input, bins)
     return r
 
-def CC_RANK(
-  input: np.ndarray | list[np.ndarray]
-) -> np.ndarray | list[np.ndarray]:
+def CC_RANK[A: np.ndarray | list[np.ndarray]](
+  input: A
+) -> A:
   """
   Calculate rank percentage cross group dimension, the ctx.groups() is the number of groups
   Same value are averaged
@@ -162,9 +162,9 @@ def CC_RANK(
     _algo.cc_rank(r, input)
     return r
 
-def CC_ZSCORE(
-  input: np.ndarray | list[np.ndarray]
-) -> np.ndarray | list[np.ndarray]:
+def CC_ZSCORE[A: np.ndarray | list[np.ndarray]](
+  input: A
+) -> A:
   """
   Calculate cross-sectional Z-Score across groups at each time step
   
@@ -182,9 +182,9 @@ def CC_ZSCORE(
     _algo.cc_zscore(r, input)
     return r
 
-def CORR(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def CORR[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Time Series Correlation in moving window on self
   
@@ -201,9 +201,9 @@ def CORR(
     _algo.corr(r, input, periods)
     return r
 
-def CORR2(
-  x: np.ndarray | list[np.ndarray], y: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def CORR2[A: np.ndarray | list[np.ndarray]](
+  x: A, y: A, periods: int
+) -> A:
   """
   Calculate two series correlation over a moving window
   
@@ -222,9 +222,9 @@ def CORR2(
     _algo.corr2(r, x, y, periods)
     return r
 
-def COUNT(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def COUNT[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Calculate number of periods where condition is true in passed `periods` window
   
@@ -241,9 +241,9 @@ def COUNT(
     _algo.count(r, input, periods)
     return r
 
-def COUNT_NANS(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def COUNT_NANS[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Count number of NaN values in a rolling window
   
@@ -260,9 +260,9 @@ def COUNT_NANS(
     _algo.count_nans(r, input, periods)
     return r
 
-def COV(
-  x: np.ndarray | list[np.ndarray], y: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def COV[A: np.ndarray | list[np.ndarray]](
+  x: A, y: A, periods: int
+) -> A:
   """
   Calculate Covariance over a moving window
   
@@ -281,9 +281,9 @@ def COV(
     _algo.cov(r, x, y, periods)
     return r
 
-def CROSS(
-  a: np.ndarray | list[np.ndarray], b: np.ndarray | list[np.ndarray]
-) -> np.ndarray | list[np.ndarray]:
+def CROSS[A: np.ndarray | list[np.ndarray]](
+  a: A, b: A
+) -> A:
   """
   For 2 arrays A and B, return true if A[i-1] < B[i-1] and A[i] >= B[i]
   alias: golden_cross, cross_ge
@@ -301,9 +301,9 @@ def CROSS(
     _algo.cross(r, a, b)
     return r
 
-def DMA(
-  input: np.ndarray | list[np.ndarray], weight: float
-) -> np.ndarray | list[np.ndarray]:
+def DMA[A: np.ndarray | list[np.ndarray]](
+  input: A, weight: float
+) -> A:
   """
   Exponential Moving Average
   current = weight * current + (1 - weight) * previous
@@ -321,9 +321,9 @@ def DMA(
     _algo.dma(r, input, weight)
     return r
 
-def ENTROPY(
-  input: np.ndarray | list[np.ndarray], periods: int, bins: int
-) -> np.ndarray | list[np.ndarray]:
+def ENTROPY[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int, bins: int
+) -> A:
   """
   Calculate rolling Shannon entropy over a moving window
   
@@ -343,9 +343,9 @@ def ENTROPY(
     _algo.entropy(r, input, periods, bins)
     return r
 
-def FRET(
-  open: np.ndarray | list[np.ndarray], close: np.ndarray | list[np.ndarray], is_calc: np.ndarray | list[np.ndarray], delay: int, periods: int
-) -> np.ndarray | list[np.ndarray]:
+def FRET[A: np.ndarray | list[np.ndarray]](
+  open: A, close: A, is_calc: A, delay: int, periods: int
+) -> A:
   """
   Future Return
   
@@ -370,9 +370,9 @@ def FRET(
     _algo.fret(r, open, close, is_calc, delay, periods)
     return r
 
-def GROUP_RANK(
-  category: np.ndarray | list[np.ndarray], input: np.ndarray | list[np.ndarray]
-) -> np.ndarray | list[np.ndarray]:
+def GROUP_RANK[A: np.ndarray | list[np.ndarray]](
+  category: A, input: A
+) -> A:
   """
   Calculate rank percentage within each category group at each time step
   
@@ -393,9 +393,9 @@ def GROUP_RANK(
     _algo.group_rank(r, category, input)
     return r
 
-def GROUP_ZSCORE(
-  category: np.ndarray | list[np.ndarray], input: np.ndarray | list[np.ndarray]
-) -> np.ndarray | list[np.ndarray]:
+def GROUP_ZSCORE[A: np.ndarray | list[np.ndarray]](
+  category: A, input: A
+) -> A:
   """
   Calculate Z-Score within each category group at each time step
   
@@ -417,9 +417,9 @@ def GROUP_ZSCORE(
     _algo.group_zscore(r, category, input)
     return r
 
-def HHV(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def HHV[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Find highest value in a preceding `periods` window
   
@@ -436,9 +436,9 @@ def HHV(
     _algo.hhv(r, input, periods)
     return r
 
-def HHVBARS(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def HHVBARS[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   The number of periods that have passed since the array reached its `periods` period high
   
@@ -455,9 +455,9 @@ def HHVBARS(
     _algo.hhvbars(r, input, periods)
     return r
 
-def INTERCEPT(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def INTERCEPT[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Linear Regression Intercept
   
@@ -474,9 +474,9 @@ def INTERCEPT(
     _algo.intercept(r, input, periods)
     return r
 
-def KURTOSIS(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def KURTOSIS[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Calculate rolling sample excess Kurtosis over a moving window
   
@@ -495,9 +495,9 @@ def KURTOSIS(
     _algo.kurtosis(r, input, periods)
     return r
 
-def LLV(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def LLV[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Find lowest value in a preceding `periods` window
   
@@ -514,9 +514,9 @@ def LLV(
     _algo.llv(r, input, periods)
     return r
 
-def LLVBARS(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def LLVBARS[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   The number of periods that have passed since the array reached its periods period low
   
@@ -533,9 +533,9 @@ def LLVBARS(
     _algo.llvbars(r, input, periods)
     return r
 
-def LONGCROSS(
-  a: np.ndarray | list[np.ndarray], b: np.ndarray | list[np.ndarray], n: int
-) -> np.ndarray | list[np.ndarray]:
+def LONGCROSS[A: np.ndarray | list[np.ndarray]](
+  a: A, b: A, n: int
+) -> A:
   """
   For 2 arrays A and B, return true if previous N periods A < B, Current A >= B
   """
@@ -552,9 +552,9 @@ def LONGCROSS(
     _algo.longcross(r, a, b, n)
     return r
 
-def LWMA(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def LWMA[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Linear Weighted Moving Average
   
@@ -571,9 +571,9 @@ def LWMA(
     _algo.lwma(r, input, periods)
     return r
 
-def MA(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def MA[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Simple Moving Average, also known as arithmetic moving average
   
@@ -590,9 +590,9 @@ def MA(
     _algo.ma(r, input, periods)
     return r
 
-def MAX_DRAWDOWN(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def MAX_DRAWDOWN[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Rolling Maximum Drawdown.
   
@@ -613,9 +613,9 @@ def MAX_DRAWDOWN(
     _algo.max_drawdown(r, input, periods)
     return r
 
-def MIN_MAX_DIFF(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def MIN_MAX_DIFF[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Calculate rolling min-max difference (range) over a moving window
   
@@ -633,9 +633,9 @@ def MIN_MAX_DIFF(
     _algo.min_max_diff(r, input, periods)
     return r
 
-def MOMENT(
-  input: np.ndarray | list[np.ndarray], periods: int, k: int
-) -> np.ndarray | list[np.ndarray]:
+def MOMENT[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int, k: int
+) -> A:
   """
   Calculate rolling k-th central moment over a moving window
   
@@ -654,9 +654,9 @@ def MOMENT(
     _algo.moment(r, input, periods, k)
     return r
 
-def NEUTRALIZE(
-  category: np.ndarray | list[np.ndarray], input: np.ndarray | list[np.ndarray]
-) -> np.ndarray | list[np.ndarray]:
+def NEUTRALIZE[A: np.ndarray | list[np.ndarray]](
+  category: A, input: A
+) -> A:
   """
   Neutralize the effect of a categorical variable on a numeric variable
   """
@@ -673,9 +673,9 @@ def NEUTRALIZE(
     _algo.neutralize(r, category, input)
     return r
 
-def PRODUCT(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def PRODUCT[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Calculate product of values in preceding `periods` window
   
@@ -694,9 +694,9 @@ def PRODUCT(
     _algo.product(r, input, periods)
     return r
 
-def QUANTILE(
-  input: np.ndarray | list[np.ndarray], periods: int, q: float
-) -> np.ndarray | list[np.ndarray]:
+def QUANTILE[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int, q: float
+) -> A:
   """
   Calculate rolling quantile over a moving window
   
@@ -718,9 +718,9 @@ def QUANTILE(
     _algo.quantile(r, input, periods, q)
     return r
 
-def RANK(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def RANK[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Calculate rank in a sliding window with size `periods`
   
@@ -738,9 +738,9 @@ def RANK(
     _algo.rank(r, input, periods)
     return r
 
-def RCROSS(
-  a: np.ndarray | list[np.ndarray], b: np.ndarray | list[np.ndarray]
-) -> np.ndarray | list[np.ndarray]:
+def RCROSS[A: np.ndarray | list[np.ndarray]](
+  a: A, b: A
+) -> A:
   """
   For 2 arrays A and B, return true if A[i-1] > B[i-1] and A[i] <= B[i]
   alias: death_cross, cross_le
@@ -758,9 +758,9 @@ def RCROSS(
     _algo.rcross(r, a, b)
     return r
 
-def REF(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def REF[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Right shift input array by `periods`, r[i] = input[i - periods]
   
@@ -777,9 +777,9 @@ def REF(
     _algo.ref(r, input, periods)
     return r
 
-def REGBETA(
-  y: np.ndarray | list[np.ndarray], x: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def REGBETA[A: np.ndarray | list[np.ndarray]](
+  y: A, x: A, periods: int
+) -> A:
   """
   Calculate Regression Coefficient (Beta) of Y on X over a moving window
   
@@ -798,9 +798,9 @@ def REGBETA(
     _algo.regbeta(r, y, x, periods)
     return r
 
-def REGRESI(
-  y: np.ndarray | list[np.ndarray], x: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def REGRESI[A: np.ndarray | list[np.ndarray]](
+  y: A, x: A, periods: int
+) -> A:
   """
   Calculate Regression Residual of Y on X over a moving window
   
@@ -819,9 +819,9 @@ def REGRESI(
     _algo.regresi(r, y, x, periods)
     return r
 
-def RLONGCROSS(
-  a: np.ndarray | list[np.ndarray], b: np.ndarray | list[np.ndarray], n: int
-) -> np.ndarray | list[np.ndarray]:
+def RLONGCROSS[A: np.ndarray | list[np.ndarray]](
+  a: A, b: A, n: int
+) -> A:
   """
   For 2 arrays A and B, return true if previous N periods A > B, Current A <= B
   """
@@ -838,9 +838,9 @@ def RLONGCROSS(
     _algo.rlongcross(r, a, b, n)
     return r
 
-def SCAN_ADD(
-  input: np.ndarray | list[np.ndarray], condition: np.ndarray | list[np.ndarray]
-) -> np.ndarray | list[np.ndarray]:
+def SCAN_ADD[A: np.ndarray | list[np.ndarray]](
+  input: A, condition: A
+) -> A:
   """
   Conditional cumulative add: r[t] = r[t-1] + (cond[t] ? input[t] : 0)
   
@@ -860,9 +860,9 @@ def SCAN_ADD(
     _algo.scan_add(r, input, condition)
     return r
 
-def SCAN_MUL(
-  input: np.ndarray | list[np.ndarray], condition: np.ndarray | list[np.ndarray]
-) -> np.ndarray | list[np.ndarray]:
+def SCAN_MUL[A: np.ndarray | list[np.ndarray]](
+  input: A, condition: A
+) -> A:
   """
   Conditional cumulative multiply: r[t] = r[t-1] * (cond[t] ? input[t] : 1)
   
@@ -882,9 +882,9 @@ def SCAN_MUL(
     _algo.scan_mul(r, input, condition)
     return r
 
-def SHARPE(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def SHARPE[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Rolling Sharpe Ratio of returns.
   
@@ -904,9 +904,9 @@ def SHARPE(
     _algo.sharpe(r, input, periods)
     return r
 
-def SKEWNESS(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def SKEWNESS[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Calculate rolling sample Skewness over a moving window
   
@@ -925,9 +925,9 @@ def SKEWNESS(
     _algo.skewness(r, input, periods)
     return r
 
-def SLOPE(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def SLOPE[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Linear Regression Slope
   
@@ -944,9 +944,9 @@ def SLOPE(
     _algo.slope(r, input, periods)
     return r
 
-def SMA(
-  input: np.ndarray | list[np.ndarray], n: int, m: int
-) -> np.ndarray | list[np.ndarray]:
+def SMA[A: np.ndarray | list[np.ndarray]](
+  input: A, n: int, m: int
+) -> A:
   """
   Exponential Moving Average (variant of well-known EMA) weight = m / n
   
@@ -963,9 +963,9 @@ def SMA(
     _algo.sma(r, input, n, m)
     return r
 
-def STDDEV(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def STDDEV[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Calculate Standard Deviation over a moving window
   
@@ -982,9 +982,9 @@ def STDDEV(
     _algo.stddev(r, input, periods)
     return r
 
-def SUM(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def SUM[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Calculate sum of values in preceding `periods` window
   
@@ -1003,9 +1003,9 @@ def SUM(
     _algo.sum(r, input, periods)
     return r
 
-def SUMBARS(
-  input: np.ndarray | list[np.ndarray], amount: float
-) -> np.ndarray | list[np.ndarray]:
+def SUMBARS[A: np.ndarray | list[np.ndarray]](
+  input: A, amount: float
+) -> A:
   """
   Calculate number of periods (bars) backwards until the sum of values is greater than or equal to `amount`
   
@@ -1022,9 +1022,9 @@ def SUMBARS(
     _algo.sumbars(r, input, amount)
     return r
 
-def SUMIF(
-  input: np.ndarray | list[np.ndarray], condition: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def SUMIF[A: np.ndarray | list[np.ndarray]](
+  input: A, condition: A, periods: int
+) -> A:
   """
   Calculate sum of values in preceding `periods` window where `condition` is true
   
@@ -1043,9 +1043,9 @@ def SUMIF(
     _algo.sumif(r, input, condition, periods)
     return r
 
-def VAR(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def VAR[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Calculate Variance over a moving window
   
@@ -1062,9 +1062,9 @@ def VAR(
     _algo.var(r, input, periods)
     return r
 
-def WEIGHTED_DELAY(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def WEIGHTED_DELAY[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Calculate weighted delay (exponentially weighted lag)
   
@@ -1082,9 +1082,9 @@ def WEIGHTED_DELAY(
     _algo.weighted_delay(r, input, periods)
     return r
 
-def ZSCORE(
-  input: np.ndarray | list[np.ndarray], periods: int
-) -> np.ndarray | list[np.ndarray]:
+def ZSCORE[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: int
+) -> A:
   """
   Calculate rolling Z-Score over a moving window
   

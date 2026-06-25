@@ -8,14 +8,14 @@ classifiers = [
 ]
 dynamic = ["version"]
 dependencies = ["numpy>=2"]
-readme = "../README.md"
+readme = "README.md"
 keywords = [
     "financial data analysis",
     "factor research",
     "technical indicator calculation",
 ]
 description = "Alpha Library: A high-performance rolling window calculation library implemented in Rust with Python bindings. Used for financial data analysis and factor research."
-license = { file = "../LICENSE" }
+license = { file = "LICENSE" }
 authors = [{ name = "ElseJJ" }]
 
 [project.urls]
