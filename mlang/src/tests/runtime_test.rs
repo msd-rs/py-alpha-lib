@@ -317,3 +317,30 @@ fn test_empty_data_input() -> Result<()> {
 
   Ok(())
 }
+
+#[test]
+fn test_runtime_split() -> Result<()> {
+  let code = r#"
+    BW : BW_SPLIT(PRICE, DIV, TS, RS, RP);
+    FW : FW_SPLIT(PRICE, DIV, TS, RS, RP);
+  "#;
+
+  let mut datas = HashMap::new();
+  datas.insert("PRICE".to_string(), NumArray::from(vec![10.0, 10.0, 10.0]));
+  datas.insert("DIV".to_string(), NumArray::from(vec![0.0, 0.0, 1.0]));
+  datas.insert("TS".to_string(), NumArray::from(vec![0.0, 1.0, 0.0]));
+  datas.insert("RS".to_string(), NumArray::from(vec![0.0, 0.0, 0.0]));
+  datas.insert("RP".to_string(), NumArray::from(vec![0.0, 0.0, 0.0]));
+  
+  let params = HashMap::new();
+  let mut rt = MRuntime::new(Context::default());
+  let lines = rt.execute(code, &datas, &params)?;
+
+  assert_eq!(lines.len(), 2);
+  assert_eq!(lines[0].name, "bw");
+  assert_eq!(lines[0].data, vec![4.0, 9.0, 10.0]);
+  assert_eq!(lines[1].name, "fw");
+  assert_eq!(lines[1].data, vec![10.0, 20.0, 22.0]);
+
+  Ok(())
+}

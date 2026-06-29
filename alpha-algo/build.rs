@@ -267,6 +267,162 @@ fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
       continue;
     }
 
+    if arrays.len() == 6 {
+      let r_name = arrays[0].0;
+      let a_name = arrays[1].0;
+      let b_name = arrays[2].0;
+      let c_name = arrays[3].0;
+      let d_name = arrays[4].0;
+      let e_name = arrays[5].0;
+
+      let gen_args = |type_name: &str| -> String {
+        let mut args = String::new();
+        for param in &func.params {
+          match param {
+            TaType::NumArray(_) | TaType::BoolArray(_) | TaType::Context(_) => {}
+            TaType::Num(n) => {
+              if type_name == "f32" {
+                let _ = write!(args, ", {} as f32", n);
+              } else {
+                let _ = write!(args, ", {}", n);
+              }
+            }
+            TaType::Int(n) => {
+              let _ = write!(args, ", {}", n);
+            }
+            _ => {}
+          }
+        }
+        args
+      };
+
+      let args_f64 = gen_args("f64");
+      let args_f32 = gen_args("f32");
+
+      writeln!(
+        code,
+        "    if let Some((((((mut {}, {}), {}), {}), {}), {})) = {}",
+        r_name, a_name, b_name, c_name, d_name, e_name, r_name
+      )?;
+      writeln!(code, "      .extract::<PyReadwriteArray1<'py, f64>>().ok()")?;
+      writeln!(
+        code,
+        "      .zip({}.extract::<PyReadonlyArray1<'py, f64>>().ok())",
+        a_name
+      )?;
+      writeln!(
+        code,
+        "      .zip({}.extract::<PyReadonlyArray1<'py, f64>>().ok())",
+        b_name
+      )?;
+      writeln!(
+        code,
+        "      .zip({}.extract::<PyReadonlyArray1<'py, f64>>().ok())",
+        c_name
+      )?;
+      writeln!(
+        code,
+        "      .zip({}.extract::<PyReadonlyArray1<'py, f64>>().ok())",
+        d_name
+      )?;
+      writeln!(
+        code,
+        "      .zip({}.extract::<PyReadonlyArray1<'py, f64>>().ok()) {{",
+        e_name
+      )?;
+
+      writeln!(
+        code,
+        "      let mut {} = {}.as_array_mut();",
+        r_name, r_name
+      )?;
+      writeln!(
+        code,
+        "      let {} = {}.as_slice_mut().ok_or(PyValueError::new_err(\"failed to get mutable slice\"))?;",
+        r_name, r_name
+      )?;
+
+      for name in &[a_name, b_name, c_name, d_name, e_name] {
+        writeln!(code, "      let {} = {}.as_array();", name, name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          name, name
+        )?;
+      }
+
+      writeln!(
+        code,
+        "      {}(&ctx, {}, {}, {}, {}, {}, {}{}).map_err(|e| e.into())",
+        rust_func_name, r_name, a_name, b_name, c_name, d_name, e_name, args_f64
+      )?;
+
+      writeln!(
+        code,
+        "    }} else if let Some((((((mut {}, {}), {}), {}), {}), {})) = {}",
+        r_name, a_name, b_name, c_name, d_name, e_name, r_name
+      )?;
+      writeln!(code, "      .extract::<PyReadwriteArray1<'py, f32>>().ok()")?;
+      writeln!(
+        code,
+        "      .zip({}.extract::<PyReadonlyArray1<'py, f32>>().ok())",
+        a_name
+      )?;
+      writeln!(
+        code,
+        "      .zip({}.extract::<PyReadonlyArray1<'py, f32>>().ok())",
+        b_name
+      )?;
+      writeln!(
+        code,
+        "      .zip({}.extract::<PyReadonlyArray1<'py, f32>>().ok())",
+        c_name
+      )?;
+      writeln!(
+        code,
+        "      .zip({}.extract::<PyReadonlyArray1<'py, f32>>().ok())",
+        d_name
+      )?;
+      writeln!(
+        code,
+        "      .zip({}.extract::<PyReadonlyArray1<'py, f32>>().ok()) {{",
+        e_name
+      )?;
+
+      writeln!(
+        code,
+        "      let mut {} = {}.as_array_mut();",
+        r_name, r_name
+      )?;
+      writeln!(
+        code,
+        "      let {} = {}.as_slice_mut().ok_or(PyValueError::new_err(\"failed to get mutable slice\"))?;",
+        r_name, r_name
+      )?;
+
+      for name in &[a_name, b_name, c_name, d_name, e_name] {
+        writeln!(code, "      let {} = {}.as_array();", name, name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          name, name
+        )?;
+      }
+
+      writeln!(
+        code,
+        "      {}(&ctx, {}, {}, {}, {}, {}, {}{}).map_err(|e| e.into())",
+        rust_func_name, r_name, a_name, b_name, c_name, d_name, e_name, args_f32
+      )?;
+
+      writeln!(
+        code,
+        "    }} else {{ Err(PyValueError::new_err(\"invalid input\")) }}"
+      )?;
+      writeln!(code, "  }}")?;
+      continue;
+    }
+
     if arrays.len() == 4 {
       let r_name = arrays[0].0;
       let a_name = arrays[1].0;
@@ -1505,6 +1661,109 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
 
     if arrays.len() < 2 {
       // Need at least 2 arrays (output and input)
+      continue;
+    }
+
+    if arrays.len() == 6 {
+      let r_name = arrays[0].0;
+      let a_name = arrays[1].0;
+      let b_name = arrays[2].0;
+      let c_name = arrays[3].0;
+      let d_name = arrays[4].0;
+      let e_name = arrays[5].0;
+
+      let mut py_params = vec![
+        format!("{}: A", a_name),
+        format!("{}: A", b_name),
+        format!("{}: A", c_name),
+        format!("{}: A", d_name),
+        format!("{}: A", e_name),
+      ];
+      let mut call_params = vec![
+        r_name.as_str(),
+        a_name.as_str(),
+        b_name.as_str(),
+        c_name.as_str(),
+        d_name.as_str(),
+        e_name.as_str(),
+      ];
+
+      for param in &func.params {
+        match param {
+          TaType::Num(n) => {
+            py_params.push(format!("{}: float", n));
+            call_params.push(n);
+          }
+          TaType::Int(n) => {
+            py_params.push(format!("{}: int", n));
+            call_params.push(n);
+          }
+          _ => {}
+        }
+      }
+
+      writeln!(
+        file,
+        "def {}[A: np.ndarray | list[np.ndarray]](",
+        py_func_name
+      )?;
+      writeln!(file, "  {}", py_params.join(", "))?;
+      writeln!(file, ") -> A:")?;
+      if !doc.trim().is_empty() {
+        writeln!(file, "  \"\"\"")?;
+        writeln!(file, "{}", doc)?;
+        writeln!(file, "  \"\"\"")?;
+      }
+
+      writeln!(
+        file,
+        "  if isinstance({}, list) and isinstance({}, list) and isinstance({}, list) and isinstance({}, list) and isinstance({}, list):",
+        a_name, b_name, c_name, d_name, e_name
+      )?;
+
+      for (name, ty) in [
+        (a_name, arrays[1].1),
+        (b_name, arrays[2].1),
+        (c_name, arrays[3].1),
+        (d_name, arrays[4].1),
+        (e_name, arrays[5].1),
+      ] {
+        writeln!(file, "    {} = {}", name, py_convert_list(ty, name))?;
+      }
+      writeln!(
+        file,
+        "    {} = [np.empty_like(x) for x in {}]",
+        r_name, a_name
+      )?;
+
+      writeln!(
+        file,
+        "    _algo.{}({})",
+        rust_func_name,
+        call_params.join(", ")
+      )?;
+      writeln!(file, "    return {}", r_name)?;
+
+      writeln!(file, "  else:")?;
+      for (name, ty) in [
+        (a_name, arrays[1].1),
+        (b_name, arrays[2].1),
+        (c_name, arrays[3].1),
+        (d_name, arrays[4].1),
+        (e_name, arrays[5].1),
+      ] {
+        writeln!(file, "    {} = {}", name, py_convert(ty, name))?;
+      }
+      writeln!(file, "    {} = np.empty_like({})", r_name, a_name)?;
+
+      writeln!(
+        file,
+        "    _algo.{}({})",
+        rust_func_name,
+        call_params.join(", ")
+      )?;
+      writeln!(file, "    return {}", r_name)?;
+      writeln!(file, "")?;
       continue;
     }
 

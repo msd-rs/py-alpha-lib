@@ -561,6 +561,63 @@
       Err(PyValueError::new_err("invalid input"))
     }
   }
+  /// Backward split and dividend adjustment
+  #[pyfunction]
+  fn bw_split<'py>(
+    py: Python<'py>,
+    r: &'py Bound<'_, PyAny>,
+    price: &'py Bound<'_, PyAny>,
+    dividend: &'py Bound<'_, PyAny>,
+    transfer_shares: &'py Bound<'_, PyAny>,
+    right_shares: &'py Bound<'_, PyAny>,
+    right_price: &'py Bound<'_, PyAny>,
+  ) -> PyResult<()> {
+    // 1. get context
+    #[allow(unused_mut)]
+    let mut ctx = ctx(py);
+    // 2. check input type and do dispatch
+    if let Some((((((mut r, price), dividend), transfer_shares), right_shares), right_price)) = r
+      .extract::<PyReadwriteArray1<'py, f64>>().ok()
+      .zip(price.extract::<PyReadonlyArray1<'py, f64>>().ok())
+      .zip(dividend.extract::<PyReadonlyArray1<'py, f64>>().ok())
+      .zip(transfer_shares.extract::<PyReadonlyArray1<'py, f64>>().ok())
+      .zip(right_shares.extract::<PyReadonlyArray1<'py, f64>>().ok())
+      .zip(right_price.extract::<PyReadonlyArray1<'py, f64>>().ok()) {
+      let mut r = r.as_array_mut();
+      let r = r.as_slice_mut().ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+      let price = price.as_array();
+      let price = price.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let dividend = dividend.as_array();
+      let dividend = dividend.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let transfer_shares = transfer_shares.as_array();
+      let transfer_shares = transfer_shares.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let right_shares = right_shares.as_array();
+      let right_shares = right_shares.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let right_price = right_price.as_array();
+      let right_price = right_price.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      ta_bw_split(&ctx, r, price, dividend, transfer_shares, right_shares, right_price).map_err(|e| e.into())
+    } else if let Some((((((mut r, price), dividend), transfer_shares), right_shares), right_price)) = r
+      .extract::<PyReadwriteArray1<'py, f32>>().ok()
+      .zip(price.extract::<PyReadonlyArray1<'py, f32>>().ok())
+      .zip(dividend.extract::<PyReadonlyArray1<'py, f32>>().ok())
+      .zip(transfer_shares.extract::<PyReadonlyArray1<'py, f32>>().ok())
+      .zip(right_shares.extract::<PyReadonlyArray1<'py, f32>>().ok())
+      .zip(right_price.extract::<PyReadonlyArray1<'py, f32>>().ok()) {
+      let mut r = r.as_array_mut();
+      let r = r.as_slice_mut().ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+      let price = price.as_array();
+      let price = price.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let dividend = dividend.as_array();
+      let dividend = dividend.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let transfer_shares = transfer_shares.as_array();
+      let transfer_shares = transfer_shares.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let right_shares = right_shares.as_array();
+      let right_shares = right_shares.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let right_price = right_price.as_array();
+      let right_price = right_price.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      ta_bw_split(&ctx, r, price, dividend, transfer_shares, right_shares, right_price).map_err(|e| e.into())
+    } else { Err(PyValueError::new_err("invalid input")) }
+  }
   /// Calculate rank percentage cross group dimension, the ctx.groups() is the number of groups
   #[pyfunction]
   fn cc_rank<'py>(
@@ -1514,6 +1571,63 @@
       let is_calc = is_calc.as_array();
       let is_calc = is_calc.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
       ta_fret(&ctx, r, open, close, is_calc, delay, periods).map_err(|e| e.into())
+    } else { Err(PyValueError::new_err("invalid input")) }
+  }
+  /// Forward split and dividend adjustment
+  #[pyfunction]
+  fn fw_split<'py>(
+    py: Python<'py>,
+    r: &'py Bound<'_, PyAny>,
+    price: &'py Bound<'_, PyAny>,
+    dividend: &'py Bound<'_, PyAny>,
+    transfer_shares: &'py Bound<'_, PyAny>,
+    right_shares: &'py Bound<'_, PyAny>,
+    right_price: &'py Bound<'_, PyAny>,
+  ) -> PyResult<()> {
+    // 1. get context
+    #[allow(unused_mut)]
+    let mut ctx = ctx(py);
+    // 2. check input type and do dispatch
+    if let Some((((((mut r, price), dividend), transfer_shares), right_shares), right_price)) = r
+      .extract::<PyReadwriteArray1<'py, f64>>().ok()
+      .zip(price.extract::<PyReadonlyArray1<'py, f64>>().ok())
+      .zip(dividend.extract::<PyReadonlyArray1<'py, f64>>().ok())
+      .zip(transfer_shares.extract::<PyReadonlyArray1<'py, f64>>().ok())
+      .zip(right_shares.extract::<PyReadonlyArray1<'py, f64>>().ok())
+      .zip(right_price.extract::<PyReadonlyArray1<'py, f64>>().ok()) {
+      let mut r = r.as_array_mut();
+      let r = r.as_slice_mut().ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+      let price = price.as_array();
+      let price = price.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let dividend = dividend.as_array();
+      let dividend = dividend.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let transfer_shares = transfer_shares.as_array();
+      let transfer_shares = transfer_shares.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let right_shares = right_shares.as_array();
+      let right_shares = right_shares.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let right_price = right_price.as_array();
+      let right_price = right_price.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      ta_fw_split(&ctx, r, price, dividend, transfer_shares, right_shares, right_price).map_err(|e| e.into())
+    } else if let Some((((((mut r, price), dividend), transfer_shares), right_shares), right_price)) = r
+      .extract::<PyReadwriteArray1<'py, f32>>().ok()
+      .zip(price.extract::<PyReadonlyArray1<'py, f32>>().ok())
+      .zip(dividend.extract::<PyReadonlyArray1<'py, f32>>().ok())
+      .zip(transfer_shares.extract::<PyReadonlyArray1<'py, f32>>().ok())
+      .zip(right_shares.extract::<PyReadonlyArray1<'py, f32>>().ok())
+      .zip(right_price.extract::<PyReadonlyArray1<'py, f32>>().ok()) {
+      let mut r = r.as_array_mut();
+      let r = r.as_slice_mut().ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+      let price = price.as_array();
+      let price = price.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let dividend = dividend.as_array();
+      let dividend = dividend.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let transfer_shares = transfer_shares.as_array();
+      let transfer_shares = transfer_shares.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let right_shares = right_shares.as_array();
+      let right_shares = right_shares.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let right_price = right_price.as_array();
+      let right_price = right_price.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      ta_fw_split(&ctx, r, price, dividend, transfer_shares, right_shares, right_price).map_err(|e| e.into())
     } else { Err(PyValueError::new_err("invalid input")) }
   }
   /// Calculate rank percentage within each category group at each time step
@@ -4725,6 +4839,7 @@ pub fn register_functions(m: &Bound<'_, PyModule>) -> PyResult<()> {
   m.add_function(wrap_pyfunction!(barssince, m)?)?;
   m.add_function(wrap_pyfunction!(beta, m)?)?;
   m.add_function(wrap_pyfunction!(bins, m)?)?;
+  m.add_function(wrap_pyfunction!(bw_split, m)?)?;
   m.add_function(wrap_pyfunction!(cc_rank, m)?)?;
   m.add_function(wrap_pyfunction!(cc_zscore, m)?)?;
   m.add_function(wrap_pyfunction!(corr, m)?)?;
@@ -4736,6 +4851,7 @@ pub fn register_functions(m: &Bound<'_, PyModule>) -> PyResult<()> {
   m.add_function(wrap_pyfunction!(dma, m)?)?;
   m.add_function(wrap_pyfunction!(entropy, m)?)?;
   m.add_function(wrap_pyfunction!(fret, m)?)?;
+  m.add_function(wrap_pyfunction!(fw_split, m)?)?;
   m.add_function(wrap_pyfunction!(group_rank, m)?)?;
   m.add_function(wrap_pyfunction!(group_zscore, m)?)?;
   m.add_function(wrap_pyfunction!(hhv, m)?)?;

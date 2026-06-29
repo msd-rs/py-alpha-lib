@@ -48,6 +48,14 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       })?,
     )?;
     lua.globals().set(
+      "BW_SPLIT",
+      lua.create_function(|lua, (price, dividend, transfer_shares, right_shares, right_price): (NumArray, NumArray, NumArray, NumArray, NumArray)| {
+        let mut r = vec![0.0; price.len()];
+        ta_bw_split::<f64>(&ctx(lua), &mut r, &price, &dividend, &transfer_shares, &right_shares, &right_price)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
       "CC_RANK",
       lua.create_function(|lua, (input,): (NumArray,)| {
         let mut r = vec![0.0; input.len()];
@@ -140,6 +148,14 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       lua.create_function(|lua, (open, close, is_calc, delay, periods): (NumArray, NumArray, NumArray, usize, usize)| {
         let mut r = vec![0.0; open.len()];
         ta_fret::<f64>(&ctx(lua), &mut r, &open, &close, &is_calc, delay, periods)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
+      "FW_SPLIT",
+      lua.create_function(|lua, (price, dividend, transfer_shares, right_shares, right_price): (NumArray, NumArray, NumArray, NumArray, NumArray)| {
+        let mut r = vec![0.0; price.len()];
+        ta_fw_split::<f64>(&ctx(lua), &mut r, &price, &dividend, &transfer_shares, &right_shares, &right_price)?;
         Ok(NumArray::from(r))
       })?,
     )?;
