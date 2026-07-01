@@ -14,7 +14,7 @@ So we add some other language bindings for this project.
 
 - wasm-bindgen binding, so you can use it in your javascript/typescript environment.
 - lua binding, you can use it in some environments which without `python`
-
+- FW_SPLIT, BW_SPLIT algorithms that do price split
 
 ## [0.2.5] - 2026-05-11
 
