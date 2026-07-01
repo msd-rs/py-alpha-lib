@@ -150,7 +150,7 @@ def BW_SPLIT[A: np.ndarray | list[np.ndarray]](
   """
   Backward split and dividend adjustment
   
-  Adjusts prices backward (from earliest to latest event) using a loop for precise calculation.
+  Adjusts prices backward (from latest to earliest event) using a loop for precise calculation.
   """
   if isinstance(price, list) and isinstance(dividend, list) and isinstance(transfer_shares, list) and isinstance(right_shares, list) and isinstance(right_price, list):
     price = [_to_f64(x) for x in price]
@@ -403,7 +403,7 @@ def FW_SPLIT[A: np.ndarray | list[np.ndarray]](
   """
   Forward split and dividend adjustment
   
-  Adjusts prices forward (from latest to earliest event) using a loop for precise calculation.
+  Adjusts prices forward (from earliest to latest event) using a loop for precise calculation.
   """
   if isinstance(price, list) and isinstance(dividend, list) and isinstance(transfer_shares, list) and isinstance(right_shares, list) and isinstance(right_price, list):
     price = [_to_f64(x) for x in price]

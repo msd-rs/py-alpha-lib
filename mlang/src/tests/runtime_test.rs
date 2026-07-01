@@ -338,9 +338,9 @@ fn test_runtime_split() -> Result<()> {
 
   assert_eq!(lines.len(), 2);
   assert_eq!(lines[0].name, "bw");
-  assert_eq!(lines[0].data, vec![4.0, 9.0, 10.0]);
+  assert_eq!(lines[0].data, vec![10.0, 20.0, 22.0]);
   assert_eq!(lines[1].name, "fw");
-  assert_eq!(lines[1].data, vec![10.0, 20.0, 22.0]);
+  assert_eq!(lines[1].data, vec![4.0, 9.0, 10.0]);
 
   Ok(())
 }
