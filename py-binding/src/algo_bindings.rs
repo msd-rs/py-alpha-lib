@@ -3489,6 +3489,77 @@
       Err(PyValueError::new_err("invalid input"))
     }
   }
+  /// Right shift input array by variable `periods`, r[i] = input[i - periods[i]]
+  #[pyfunction]
+  fn ref_v<'py>(
+    py: Python<'py>,
+    r: &'py Bound<'_, PyAny>,
+    input: &'py Bound<'_, PyAny>,
+    periods: &'py Bound<'_, PyAny>,
+  ) -> PyResult<()> {
+    // 1. get context
+    #[allow(unused_mut)]
+    let mut ctx = ctx(py);
+    // 2. check input type and do dispatch
+    if let Some(((mut r, input), periods)) = r
+      .extract::<PyReadwriteArray1<'py, f64>>() .ok()
+      .zip(input.extract::<PyReadonlyArray1<'py, f64>>().ok())
+      .zip(periods.extract::<PyReadonlyArray1<'py, usize>>().ok()) {
+      let mut r = r.as_array_mut();
+      let r = r.as_slice_mut().ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+      let input = input.as_array();
+      let input = input.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let periods = periods.as_array();
+      let periods = periods.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      ta_ref_v(&ctx, r, input, periods).map_err(|e| e.into())
+    } else if let Some(((mut r, input), periods)) = r
+      .extract::<PyReadwriteArray1<'py, f32>>() .ok()
+      .zip(input.extract::<PyReadonlyArray1<'py, f32>>().ok())
+      .zip(periods.extract::<PyReadonlyArray1<'py, usize>>().ok()) {
+      let mut r = r.as_array_mut();
+      let r = r.as_slice_mut().ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+      let input = input.as_array();
+      let input = input.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      let periods = periods.as_array();
+      let periods = periods.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+      ta_ref_v(&ctx, r, input, periods).map_err(|e| e.into())
+    } else if let Some(((r, input), periods)) = r.cast::<PyList>().ok().zip(input.cast::<PyList>().ok()).zip(periods.cast::<PyList>().ok()) {
+      if r.len() != input.len() || periods.len() != input.len() { return Err(PyValueError::new_err("length mismatch")); }
+      if let Some(((mut r, input), periods)) = r
+        .extract::<Vec<PyReadwriteArray1<'py, f64>>>().ok()
+        .zip(input.extract::<Vec<PyReadonlyArray1<'py, f64>>>().ok())
+        .zip(periods.extract::<Vec<PyReadonlyArray1<'py, usize>>>().ok()) {
+        let r = r.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();
+        let input = input.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let periods = periods.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let mut _r = vec![];
+        r.into_par_iter().zip(input.into_par_iter()).zip(periods.into_par_iter())
+          .map(|((mut out, a), b)| {
+            let r = out.as_slice_mut().ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+            let input = a.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+            let periods = b.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+            ta_ref_v(&ctx, r, input, periods).map_err(|e| e.into())
+          }).collect_into_vec(&mut _r);
+        match _r.into_iter().find(|x| x.is_err()) { Some(e) => e, None => Ok(()) }
+      } else if let Some(((mut r, input), periods)) = r
+        .extract::<Vec<PyReadwriteArray1<'py, f32>>>().ok()
+        .zip(input.extract::<Vec<PyReadonlyArray1<'py, f32>>>().ok())
+        .zip(periods.extract::<Vec<PyReadonlyArray1<'py, usize>>>().ok()) {
+        let r = r.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();
+        let input = input.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let periods = periods.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let mut _r = vec![];
+        r.into_par_iter().zip(input.into_par_iter()).zip(periods.into_par_iter())
+          .map(|((mut out, a), b)| {
+            let r = out.as_slice_mut().ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+            let input = a.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+            let periods = b.as_slice().ok_or(PyValueError::new_err("failed to get slice"))?;
+            ta_ref_v(&ctx, r, input, periods).map_err(|e| e.into())
+          }).collect_into_vec(&mut _r);
+        match _r.into_iter().find(|x| x.is_err()) { Some(e) => e, None => Ok(()) }
+      } else { Err(PyValueError::new_err("invalid input list")) }
+    } else { Err(PyValueError::new_err("invalid input (expected float, float, int)")) }
+  }
   /// Calculate Regression Coefficient (Beta) of Y on X over a moving window
   #[pyfunction]
   fn regbeta<'py>(
@@ -4872,6 +4943,7 @@ pub fn register_functions(m: &Bound<'_, PyModule>) -> PyResult<()> {
   m.add_function(wrap_pyfunction!(rank, m)?)?;
   m.add_function(wrap_pyfunction!(rcross, m)?)?;
   m.add_function(wrap_pyfunction!(r#ref, m)?)?;
+  m.add_function(wrap_pyfunction!(ref_v, m)?)?;
   m.add_function(wrap_pyfunction!(regbeta, m)?)?;
   m.add_function(wrap_pyfunction!(regresi, m)?)?;
   m.add_function(wrap_pyfunction!(rlongcross, m)?)?;

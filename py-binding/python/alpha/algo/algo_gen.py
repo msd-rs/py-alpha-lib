@@ -18,6 +18,12 @@ def _to_bool(a):
     return a
   return a.astype(bool)
 
+def _to_usize(a):
+  """Ensure array is usize (uint64). Zero-copy if already uint64."""
+  if a.dtype == np.uint64:
+    return a
+  return a.astype(np.uint64)
+
 def ALPHA[A: np.ndarray | list[np.ndarray]](
   input: A, benchmark: A, periods: int
 ) -> A:
@@ -829,6 +835,27 @@ def REF[A: np.ndarray | list[np.ndarray]](
     input = _to_f64(input)
     r = np.empty_like(input)
     _algo.ref(r, input, periods)
+    return r
+
+def REF_V[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: A
+) -> A:
+  """
+  Right shift input array by variable `periods`, r[i] = input[i - periods[i]]
+  
+  Ref: https://www.amibroker.com/guide/afl/ref.html
+  """
+  if isinstance(input, list) and isinstance(periods, list):
+    input = [_to_f64(x) for x in input]
+    periods = [_to_usize(x) for x in periods]
+    r = [np.empty_like(x) for x in input]
+    _algo.ref_v(r, input, periods)
+    return r
+  else:
+    input = _to_f64(input)
+    periods = _to_usize(periods)
+    r = np.empty_like(input)
+    _algo.ref_v(r, input, periods)
     return r
 
 def REGBETA[A: np.ndarray | list[np.ndarray]](

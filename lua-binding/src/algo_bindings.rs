@@ -320,6 +320,15 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       })?,
     )?;
     lua.globals().set(
+      "REF_V",
+      lua.create_function(|lua, (input, periods): (NumArray, NumArray)| {
+        let mut r = vec![0.0; input.len()];
+        let periods_usize: Vec<usize> = periods.iter().map(|&x| x as usize).collect();
+        ta_ref_v::<f64>(&ctx(lua), &mut r, &input, &periods_usize)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
       "REGBETA",
       lua.create_function(|lua, (y, x, periods): (NumArray, NumArray, usize)| {
         let mut r = vec![0.0; y.len()];

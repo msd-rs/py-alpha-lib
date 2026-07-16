@@ -6,7 +6,7 @@ description: Add new algorithm to the library.
 
 # Add New Algorithm
 
-1. algorithm should be added to `algo` module
+1. algorithm should be added to `algo` module in `alpha-algo` crate
 2. algorithm function should has prefix `ta_`
 3. numeric type should be generic as `NumT: Float + Send + Sync`
 4. conditional type should be `bool` 

@@ -42,6 +42,7 @@ the `np.ndarray` is `ndarray` type in `numpy` package
 - RANK(input: np.ndarray[float], periods: int): Calculate rank in a sliding window with size `periods`  Uses min-rank method for ties (same as pandas rankdata method='min'). NaN values are treated as larger than all non-NaN values.
 - RCROSS(a: np.ndarray[float], b: np.ndarray[float]): For 2 arrays A and B, return true if A[i-1] > B[i-1] and A[i] <= B[i] alias: death_cross, cross_le
 - REF(input: np.ndarray[float], periods: int): Right shift input array by `periods`, r[i] = input[i - periods]
+- REF_V(input: np.ndarray[float], periods: np.ndarray[int]): Right shift input array by variable `periods`, r[i] = input[i - periods[i]]
 - REGBETA(y: np.ndarray[float], x: np.ndarray[float], periods: int): Calculate Regression Coefficient (Beta) of Y on X over a moving window  Beta = Cov(X, Y) / Var(X)
 - REGRESI(y: np.ndarray[float], x: np.ndarray[float], periods: int): Calculate Regression Residual of Y on X over a moving window  Returns the residual of the last point: epsilon = Y - (alpha + beta * X)
 - RLONGCROSS(a: np.ndarray[float], b: np.ndarray[float], n: int): For 2 arrays A and B, return true if previous N periods A > B, Current A <= B

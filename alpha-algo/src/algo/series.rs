@@ -53,6 +53,56 @@ pub fn ta_ref<NumT: Float + Send + Sync>(
   Ok(())
 }
 
+/// Right shift input array by variable `periods`, r[i] = input[i - periods[i]]
+///
+/// Ref: https://www.amibroker.com/guide/afl/ref.html
+pub fn ta_ref_v<NumT: Float + Send + Sync>(
+  ctx: &Context,
+  r: &mut [NumT],
+  input: &[NumT],
+  periods: &[usize],
+) -> Result<(), Error> {
+  if r.len() != input.len() {
+    return Err(Error::LengthMismatch(r.len(), input.len()));
+  }
+  if r.len() != periods.len() {
+    return Err(Error::LengthMismatch(r.len(), periods.len()));
+  }
+
+  r.par_chunks_mut(ctx.chunk_size(r.len()))
+    .zip(input.par_chunks(ctx.chunk_size(input.len())))
+    .zip(periods.par_chunks(ctx.chunk_size(periods.len())))
+    .for_each(|((r, x), p)| {
+      let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
+      r.fill(NumT::nan());
+
+      if ctx.is_skip_nan() {
+        let mut history = Vec::with_capacity(r.len());
+        for i in start..end {
+          let val = x[i];
+          if is_normal(&val) {
+            history.push(val);
+            let period = p[i];
+            if history.len() > period {
+              r[i] = history[history.len() - 1 - period];
+            }
+          }
+        }
+      } else {
+        // Normal mode
+        for i in start..end {
+          let period = p[i];
+          if i >= period {
+            r[i] = x[i - period];
+          }
+        }
+      }
+    });
+
+  Ok(())
+}
+
 /// Calculate number of bars since last condition true
 ///
 /// Ref: https://www.amibroker.com/guide/afl/barslast.html
@@ -237,6 +287,26 @@ mod tests {
     let ctx = Context::new(0, 0, FLAG_SKIP_NAN);
     ta_ref(&ctx, &mut r, &input, 1).unwrap();
     assert_vec_eq_nan(&r, &vec![f64::NAN, f64::NAN, 1.0, 2.0]);
+  }
+
+  #[test]
+  fn test_ref_v() {
+    let input = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    let periods = vec![1, 2, 1, 3, 2];
+    let mut r = vec![0.0; input.len()];
+    let ctx = Context::new(0, 0, 0);
+    ta_ref_v(&ctx, &mut r, &input, &periods).unwrap();
+    assert_vec_eq_nan(&r, &vec![f64::NAN, f64::NAN, 2.0, 1.0, 3.0]);
+  }
+
+  #[test]
+  fn test_ref_v_skip_nan() {
+    let input = vec![1.0, f64::NAN, 2.0, 3.0, 4.0];
+    let periods = vec![1, 1, 2, 1, 3];
+    let mut r = vec![0.0; input.len()];
+    let ctx = Context::new(0, 0, FLAG_SKIP_NAN);
+    ta_ref_v(&ctx, &mut r, &input, &periods).unwrap();
+    assert_vec_eq_nan(&r, &vec![f64::NAN, f64::NAN, f64::NAN, 2.0, 1.0]);
   }
 
   #[test]

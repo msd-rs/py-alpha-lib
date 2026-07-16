@@ -12,7 +12,6 @@ enum TaType {
   Int(String),
   NumArray(String),
   BoolArray(String),
-  #[allow(dead_code)]
   IntArray(String),
   #[allow(dead_code)]
   Bool(String),
@@ -206,18 +205,15 @@ fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
           writeln!(py_args, "    {}: &'py Bound<'_, PyAny>,", n)?;
         }
         TaType::NumArray(n) => {
-          // For python args, we just list them.
-          // However based on "ema" example:
-          // r: &'py Bound<'_, PyAny>, input: &'py Bound<'_, PyAny>
-          // are the first two array args.
+          writeln!(py_args, "    {}: &'py Bound<'_, PyAny>,", n)?;
+        }
+        TaType::IntArray(n) => {
           writeln!(py_args, "    {}: &'py Bound<'_, PyAny>,", n)?;
         }
         TaType::Num(n) => {
           writeln!(py_args, "    {}: f64,", n)?;
-          // For dispatch call, we need to cast if necessary or just pass
         }
         TaType::Int(n) => {
-          // usize in rust, int in python
           writeln!(py_args, "    {}: usize,", n)?;
         }
         _ => {} // Handle others as needed
@@ -255,6 +251,7 @@ fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
       .filter_map(|p| match p {
         TaType::NumArray(n) => Some((n, p)),
         TaType::BoolArray(n) => Some((n, p)),
+        TaType::IntArray(n) => Some((n, p)),
         _ => None,
       })
       .collect();
@@ -586,6 +583,7 @@ fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
       let r_is_bool = matches!(arrays[0].1, TaType::BoolArray(_));
       let a_is_bool = matches!(arrays[1].1, TaType::BoolArray(_));
       let b_is_bool = matches!(arrays[2].1, TaType::BoolArray(_));
+      let b_is_int = matches!(arrays[2].1, TaType::IntArray(_));
 
       // Helper to generate extra args
       let gen_args = |type_name: &str| -> String {
@@ -788,6 +786,270 @@ fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
         writeln!(
           code,
           "    }} else {{ Err(PyValueError::new_err(\"invalid input (expected float, float, bool)\")) }}"
+        )?;
+        writeln!(code, "  }}")?;
+        continue;
+      } else if !r_is_bool && !a_is_bool && b_is_int {
+        // ref_v case: r=num, a=num, b=int array
+        // Support f64 and f32 for output and input, but usize for the third array.
+
+        // f64
+        writeln!(
+          code,
+          "    if let Some(((mut {}, {}), {})) = {}",
+          r_name, a_name, b_name, r_name
+        )?;
+        writeln!(
+          code,
+          "      .extract::<PyReadwriteArray1<'py, f64>>() .ok()"
+        )?;
+        writeln!(
+          code,
+          "      .zip({}.extract::<PyReadonlyArray1<'py, f64>>().ok())",
+          a_name
+        )?;
+        writeln!(
+          code,
+          "      .zip({}.extract::<PyReadonlyArray1<'py, usize>>().ok()) {{",
+          b_name
+        )?;
+
+        writeln!(
+          code,
+          "      let mut {} = {}.as_array_mut();",
+          r_name, r_name
+        )?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice_mut().ok_or(PyValueError::new_err(\"failed to get mutable slice\"))?;",
+          r_name, r_name
+        )?;
+        writeln!(code, "      let {} = {}.as_array();", a_name, a_name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          a_name, a_name
+        )?;
+        writeln!(code, "      let {} = {}.as_array();", b_name, b_name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          b_name, b_name
+        )?;
+
+        writeln!(
+          code,
+          "      {}(&ctx, {}, {}, {}).map_err(|e| e.into())",
+          rust_func_name, r_name, a_name, b_name
+        )?;
+
+        // f32
+        writeln!(
+          code,
+          "    }} else if let Some(((mut {}, {}), {})) = {}",
+          r_name, a_name, b_name, r_name
+        )?;
+        writeln!(
+          code,
+          "      .extract::<PyReadwriteArray1<'py, f32>>() .ok()"
+        )?;
+        writeln!(
+          code,
+          "      .zip({}.extract::<PyReadonlyArray1<'py, f32>>().ok())",
+          a_name
+        )?;
+        writeln!(
+          code,
+          "      .zip({}.extract::<PyReadonlyArray1<'py, usize>>().ok()) {{",
+          b_name
+        )?;
+
+        writeln!(
+          code,
+          "      let mut {} = {}.as_array_mut();",
+          r_name, r_name
+        )?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice_mut().ok_or(PyValueError::new_err(\"failed to get mutable slice\"))?;",
+          r_name, r_name
+        )?;
+        writeln!(code, "      let {} = {}.as_array();", a_name, a_name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          a_name, a_name
+        )?;
+        writeln!(code, "      let {} = {}.as_array();", b_name, b_name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          b_name, b_name
+        )?;
+
+        writeln!(
+          code,
+          "      {}(&ctx, {}, {}, {}).map_err(|e| e.into())",
+          rust_func_name, r_name, a_name, b_name
+        )?;
+
+        // PyList support
+        writeln!(
+          code,
+          "    }} else if let Some((({}, {}), {})) = {}.cast::<PyList>().ok().zip({}.cast::<PyList>().ok()).zip({}.cast::<PyList>().ok()) {{",
+          r_name, a_name, b_name, r_name, a_name, b_name
+        )?;
+        writeln!(
+          code,
+          "      if {}.len() != {}.len() || {}.len() != {}.len() {{ return Err(PyValueError::new_err(\"length mismatch\")); }}",
+          r_name, a_name, b_name, a_name
+        )?;
+
+        // PyList f64
+        writeln!(
+          code,
+          "      if let Some(((mut {}, {}), {})) = {}",
+          r_name, a_name, b_name, r_name
+        )?;
+        writeln!(
+          code,
+          "        .extract::<Vec<PyReadwriteArray1<'py, f64>>>().ok()"
+        )?;
+        writeln!(
+          code,
+          "        .zip({}.extract::<Vec<PyReadonlyArray1<'py, f64>>>().ok())",
+          a_name
+        )?;
+        writeln!(
+          code,
+          "        .zip({}.extract::<Vec<PyReadonlyArray1<'py, usize>>>().ok()) {{",
+          b_name
+        )?;
+
+        writeln!(
+          code,
+          "        let {} = {}.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();",
+          r_name, r_name
+        )?;
+        writeln!(
+          code,
+          "        let {} = {}.iter().map(|x| x.as_array()).collect::<Vec<_>>();",
+          a_name, a_name
+        )?;
+        writeln!(
+          code,
+          "        let {} = {}.iter().map(|x| x.as_array()).collect::<Vec<_>>();",
+          b_name, b_name
+        )?;
+        writeln!(code, "        let mut _r = vec![];")?;
+        writeln!(
+          code,
+          "        {}.into_par_iter().zip({}.into_par_iter()).zip({}.into_par_iter())",
+          r_name, a_name, b_name
+        )?;
+        writeln!(code, "          .map(|((mut out, a), b)| {{")?;
+        writeln!(
+          code,
+          "            let {} = out.as_slice_mut().ok_or(PyValueError::new_err(\"failed to get mutable slice\"))?;",
+          r_name
+        )?;
+        writeln!(
+          code,
+          "            let {} = a.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          a_name
+        )?;
+        writeln!(
+          code,
+          "            let {} = b.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          b_name
+        )?;
+        writeln!(
+          code,
+          "            {}(&ctx, {}, {}, {}).map_err(|e| e.into())",
+          rust_func_name, r_name, a_name, b_name
+        )?;
+        writeln!(code, "          }}).collect_into_vec(&mut _r);")?;
+        writeln!(
+          code,
+          "        match _r.into_iter().find(|x| x.is_err()) {{ Some(e) => e, None => Ok(()) }}"
+        )?;
+
+        // PyList f32
+        writeln!(
+          code,
+          "      }} else if let Some(((mut {}, {}), {})) = {}",
+          r_name, a_name, b_name, r_name
+        )?;
+        writeln!(
+          code,
+          "        .extract::<Vec<PyReadwriteArray1<'py, f32>>>().ok()"
+        )?;
+        writeln!(
+          code,
+          "        .zip({}.extract::<Vec<PyReadonlyArray1<'py, f32>>>().ok())",
+          a_name
+        )?;
+        writeln!(
+          code,
+          "        .zip({}.extract::<Vec<PyReadonlyArray1<'py, usize>>>().ok()) {{",
+          b_name
+        )?;
+
+        writeln!(
+          code,
+          "        let {} = {}.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();",
+          r_name, r_name
+        )?;
+        writeln!(
+          code,
+          "        let {} = {}.iter().map(|x| x.as_array()).collect::<Vec<_>>();",
+          a_name, a_name
+        )?;
+        writeln!(
+          code,
+          "        let {} = {}.iter().map(|x| x.as_array()).collect::<Vec<_>>();",
+          b_name, b_name
+        )?;
+        writeln!(code, "        let mut _r = vec![];")?;
+        writeln!(
+          code,
+          "        {}.into_par_iter().zip({}.into_par_iter()).zip({}.into_par_iter())",
+          r_name, a_name, b_name
+        )?;
+        writeln!(code, "          .map(|((mut out, a), b)| {{")?;
+        writeln!(
+          code,
+          "            let {} = out.as_slice_mut().ok_or(PyValueError::new_err(\"failed to get mutable slice\"))?;",
+          r_name
+        )?;
+        writeln!(
+          code,
+          "            let {} = a.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          a_name
+        )?;
+        writeln!(
+          code,
+          "            let {} = b.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          b_name
+        )?;
+        writeln!(
+          code,
+          "            {}(&ctx, {}, {}, {}).map_err(|e| e.into())",
+          rust_func_name, r_name, a_name, b_name
+        )?;
+        writeln!(code, "          }}).collect_into_vec(&mut _r);")?;
+        writeln!(
+          code,
+          "        match _r.into_iter().find(|x| x.is_err()) {{ Some(e) => e, None => Ok(()) }}"
+        )?;
+        writeln!(
+          code,
+          "      }} else {{ Err(PyValueError::new_err(\"invalid input list\")) }}"
+        )?;
+
+        writeln!(
+          code,
+          "    }} else {{ Err(PyValueError::new_err(\"invalid input (expected float, float, int)\")) }}"
         )?;
         writeln!(code, "  }}")?;
         continue;
@@ -1593,6 +1855,7 @@ fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
 fn py_convert(ty: &TaType, expr: &str) -> String {
   match ty {
     TaType::BoolArray(_) => format!("_to_bool({})", expr),
+    TaType::IntArray(_) => format!("_to_usize({})", expr),
     _ => format!("_to_f64({})", expr),
   }
 }
@@ -1601,6 +1864,7 @@ fn py_convert(ty: &TaType, expr: &str) -> String {
 fn py_convert_list(ty: &TaType, name: &str) -> String {
   match ty {
     TaType::BoolArray(_) => format!("[_to_bool(x) for x in {}]", name),
+    TaType::IntArray(_) => format!("[_to_usize(x) for x in {}]", name),
     _ => format!("[_to_f64(x) for x in {}]", name),
   }
 }
@@ -1635,6 +1899,15 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
   writeln!(file, "    return a")?;
   writeln!(file, "  return a.astype(bool)")?;
   writeln!(file, "")?;
+  writeln!(file, "def _to_usize(a):")?;
+  writeln!(
+    file,
+    "  \"\"\"Ensure array is usize (uint64). Zero-copy if already uint64.\"\"\""
+  )?;
+  writeln!(file, "  if a.dtype == np.uint64:")?;
+  writeln!(file, "    return a")?;
+  writeln!(file, "  return a.astype(np.uint64)")?;
+  writeln!(file, "")?;
 
   for func in functions {
     // Generate docstring
@@ -1655,6 +1928,7 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
       .filter_map(|p| match p {
         TaType::NumArray(n) => Some((n, p)),
         TaType::BoolArray(n) => Some((n, p)),
+        TaType::IntArray(n) => Some((n, p)),
         _ => None,
       })
       .collect();
@@ -1871,6 +2145,8 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
       let a_is_bool = matches!(arrays[1].1, TaType::BoolArray(_));
       #[allow(unused)]
       let b_is_bool = matches!(arrays[2].1, TaType::BoolArray(_));
+      #[allow(unused)]
+      let b_is_int = matches!(arrays[2].1, TaType::IntArray(_));
 
       let mut py_params = vec![format!("{}: A", a_name), format!("{}: A", b_name)];
       let mut call_params = vec![r_name.as_str(), a_name.as_str(), b_name.as_str()];
@@ -2133,6 +2409,7 @@ fn build_algo_lua(functions: &Vec<TaFunc>) -> Result<()> {
       .map(|p| match p {
         TaType::NumArray(_) => "NumArray".to_string(),
         TaType::BoolArray(_) => "BoolArray".to_string(),
+        TaType::IntArray(_) => "NumArray".to_string(),
         TaType::Num(_) => "f64".to_string(),
         TaType::Int(_) => "usize".to_string(),
         TaType::Bool(_) => "bool".to_string(),
@@ -2184,6 +2461,9 @@ fn build_algo_lua(functions: &Vec<TaFunc>) -> Result<()> {
             call_args.push(format!("&{}", n));
           }
         }
+        TaType::IntArray(n) => {
+          call_args.push(format!("&{}_usize", n));
+        }
         TaType::Num(n) | TaType::Int(n) | TaType::Bool(n) => {
           call_args.push(n.clone());
         }
@@ -2192,10 +2472,18 @@ fn build_algo_lua(functions: &Vec<TaFunc>) -> Result<()> {
     }
     let call_args_str = call_args.join(", ");
 
+    let mut conversions = String::new();
+    for param in &lua_inputs {
+      if let TaType::IntArray(n) = param {
+        let _ = writeln!(conversions, "        let {}_usize: Vec<usize> = {}.iter().map(|&x| x as usize).collect();", n, n);
+      }
+    }
+
     writeln!(code, "    lua.globals().set(")?;
     writeln!(code, "      \"{}\",", lua_name)?;
     writeln!(code, "      lua.create_function(|lua, {}| {{", closure_args)?;
     writeln!(code, "        let mut r = {};", r_init)?;
+    write!(code, "{}", conversions)?;
     writeln!(code, "        {}::<f64>({})?;", rust_name, call_args_str)?;
     writeln!(code, "        Ok({}(r))", r_wrap)?;
     writeln!(code, "      }})?,")?;

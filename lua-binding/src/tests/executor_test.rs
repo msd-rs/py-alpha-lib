@@ -80,3 +80,31 @@ fn test_execute_draw() -> Result<()> {
 
   Ok(())
 }
+
+#[test]
+fn test_ta_ref_v() -> Result<()> {
+  let code = r#"
+    R : REF_V(C, P);
+  "#;
+  let lua_code = crate::to_lua(code)?;
+  let executor = LuaExecutor::new()?;
+  let mut datas = HashMap::new();
+  datas.insert(
+    "C".to_string(),
+    NumArray::from(vec![1.0, 2.0, 3.0, 4.0, 5.0]),
+  );
+  datas.insert(
+    "P".to_string(),
+    NumArray::from(vec![1.0, 2.0, 1.0, 3.0, 2.0]),
+  );
+  let params = HashMap::new();
+  let lines = executor.execute(&lua_code, datas, params)?;
+  assert_eq!(lines.len(), 1);
+  assert_eq!(lines[0].name, "r");
+  assert!(lines[0].data[0].is_nan());
+  assert!(lines[0].data[1].is_nan());
+  assert_eq!(lines[0].data[2], 2.0);
+  assert_eq!(lines[0].data[3], 1.0);
+  assert_eq!(lines[0].data[4], 3.0);
+  Ok(())
+}
