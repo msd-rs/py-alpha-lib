@@ -126,6 +126,110 @@ pub fn ta_ma<NumT: Float + Send + Sync>(
   Ok(())
 }
 
+/// Simple Moving Average with variable periods
+///
+/// Ref: https://en.wikipedia.org/wiki/Moving_average#Simple_moving_average
+pub fn ta_ma_v<NumT: Float + Send + Sync>(
+  ctx: &Context,
+  r: &mut [NumT],
+  input: &[NumT],
+  periods: &[usize],
+) -> Result<(), Error> {
+  if r.len() != input.len() {
+    return Err(Error::LengthMismatch(r.len(), input.len()));
+  }
+  if r.len() != periods.len() {
+    return Err(Error::LengthMismatch(r.len(), periods.len()));
+  }
+
+  r.par_chunks_mut(ctx.chunk_size(r.len()))
+    .zip(input.par_chunks(ctx.chunk_size(input.len())))
+    .zip(periods.par_chunks(ctx.chunk_size(periods.len())))
+    .for_each(|((r, x), p)| {
+      let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
+      r.fill(NumT::nan());
+
+      if ctx.is_skip_nan() {
+        let mut history_indices = Vec::with_capacity(r.len());
+        let mut history_vals = Vec::with_capacity(r.len());
+        let mut history_pref = vec![NumT::zero()];
+        for i in start..end {
+          let val = x[i];
+          if is_normal(&val) {
+            history_indices.push(i);
+            history_vals.push(val);
+            let last_pref = *history_pref.last().unwrap();
+            history_pref.push(last_pref + val);
+
+            let period = p[i];
+            if period == 0 {
+              continue;
+            }
+            let l = history_vals.len();
+            if ctx.is_strictly_cycle() {
+              if l >= period {
+                let start_hist_idx = l - period;
+                if i - history_indices[start_hist_idx] + 1 == period {
+                  let sum = history_pref[l] - history_pref[start_hist_idx];
+                  r[i] = sum / NumT::from(period).unwrap();
+                }
+              }
+            } else {
+              let count = l.min(period);
+              if count > 0 {
+                let start_hist_idx = l - count;
+                let sum = history_pref[l] - history_pref[start_hist_idx];
+                r[i] = sum / NumT::from(count).unwrap();
+              }
+            }
+          }
+        }
+      } else {
+        // Normal mode
+        let mut pref = vec![NumT::zero(); r.len() + 1];
+        let mut nan_pref = vec![0; r.len() + 1];
+        for k in 0..r.len() {
+          let val = x[k];
+          if is_normal(&val) {
+            pref[k + 1] = pref[k] + val;
+            nan_pref[k + 1] = nan_pref[k];
+          } else {
+            pref[k + 1] = pref[k];
+            nan_pref[k + 1] = nan_pref[k] + 1;
+          }
+        }
+
+        for i in start..end {
+          let val = x[i];
+          if !is_normal(&val) {
+            continue;
+          }
+          let period = p[i];
+          if period == 0 {
+            continue;
+          }
+          let start_idx = if i >= period { i + 1 - period } else { 0 };
+          let win_len = i + 1 - start_idx;
+          let nan_in_window = nan_pref[i + 1] - nan_pref[start_idx];
+
+          if nan_in_window == 0 {
+            if ctx.is_strictly_cycle() {
+              if i >= period - 1 {
+                r[i] = (pref[i + 1] - pref[start_idx]) / NumT::from(period).unwrap();
+              }
+            } else {
+              r[i] = (pref[i + 1] - pref[start_idx]) / NumT::from(win_len).unwrap();
+            }
+          }
+        }
+      }
+    });
+
+  Ok(())
+}
+
+
 /// Calculate product of values in preceding `periods` window
 ///
 /// If periods is 0, it calculates the cumulative product from the first valid value.
@@ -434,5 +538,15 @@ mod tests {
     // 3: 1*2*3=6
     // 4: 2*3*4=24
     assert_vec_eq_nan(&r, &vec![1.0, f64::NAN, 2.0, 6.0, 24.0]);
+  }
+
+  #[test]
+  fn test_ta_ma_v() {
+    let input = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    let periods = vec![1, 2, 3, 2, 3];
+    let mut r = vec![0.0; input.len()];
+    let ctx = Context::new(0, 0, 0);
+    ta_ma_v(&ctx, &mut r, &input, &periods).unwrap();
+    assert_eq!(r, vec![1.0, 1.5, 2.0, 3.5, 4.0]);
   }
 }

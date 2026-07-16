@@ -293,6 +293,27 @@ def COUNT_NANS[A: np.ndarray | list[np.ndarray]](
     _algo.count_nans(r, input, periods)
     return r
 
+def COUNT_V[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: A
+) -> A:
+  """
+  Calculate number of periods where condition is true in passed variable `periods` window
+  
+  Ref: https://www.amibroker.com/guide/afl/count.html
+  """
+  if isinstance(input, list) and isinstance(periods, list):
+    input = [_to_bool(x) for x in input]
+    periods = [_to_usize(x) for x in periods]
+    r = [np.empty_like(x, dtype=float) for x in periods]
+    _algo.count_v(r, input, periods)
+    return r
+  else:
+    input = _to_bool(input)
+    periods = _to_usize(periods)
+    r = np.empty_like(periods, dtype=float)
+    _algo.count_v(r, input, periods)
+    return r
+
 def COV[A: np.ndarray | list[np.ndarray]](
   x: A, y: A, periods: int
 ) -> A:
@@ -352,6 +373,48 @@ def DMA[A: np.ndarray | list[np.ndarray]](
     input = _to_f64(input)
     r = np.empty_like(input)
     _algo.dma(r, input, weight)
+    return r
+
+def DMA_V[A: np.ndarray | list[np.ndarray]](
+  input: A, weight: A
+) -> A:
+  """
+  Exponential Moving Average with variable weight
+  
+  Ref: https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
+  """
+  if isinstance(input, list) and isinstance(weight, list):
+    input = [_to_f64(x) for x in input]
+    weight = [_to_f64(x) for x in weight]
+    r = [np.empty_like(x) for x in input]
+    _algo.dma_v(r, input, weight)
+    return r
+  else:
+    input = _to_f64(input)
+    weight = _to_f64(weight)
+    r = np.empty_like(input)
+    _algo.dma_v(r, input, weight)
+    return r
+
+def EMA_V[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: A
+) -> A:
+  """
+  Exponential Moving Average with variable periods
+  
+  Ref: https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
+  """
+  if isinstance(input, list) and isinstance(periods, list):
+    input = [_to_f64(x) for x in input]
+    periods = [_to_usize(x) for x in periods]
+    r = [np.empty_like(x) for x in input]
+    _algo.ema_v(r, input, periods)
+    return r
+  else:
+    input = _to_f64(input)
+    periods = _to_usize(periods)
+    r = np.empty_like(input)
+    _algo.ema_v(r, input, periods)
     return r
 
 def ENTROPY[A: np.ndarray | list[np.ndarray]](
@@ -496,6 +559,27 @@ def HHV[A: np.ndarray | list[np.ndarray]](
     _algo.hhv(r, input, periods)
     return r
 
+def HHV_V[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: A
+) -> A:
+  """
+  Find highest value in a preceding variable `periods` window
+  
+  Ref: https://www.amibroker.com/guide/afl/hhv.html
+  """
+  if isinstance(input, list) and isinstance(periods, list):
+    input = [_to_f64(x) for x in input]
+    periods = [_to_usize(x) for x in periods]
+    r = [np.empty_like(x) for x in input]
+    _algo.hhv_v(r, input, periods)
+    return r
+  else:
+    input = _to_f64(input)
+    periods = _to_usize(periods)
+    r = np.empty_like(input)
+    _algo.hhv_v(r, input, periods)
+    return r
+
 def HHVBARS[A: np.ndarray | list[np.ndarray]](
   input: A, periods: int
 ) -> A:
@@ -513,6 +597,27 @@ def HHVBARS[A: np.ndarray | list[np.ndarray]](
     input = _to_f64(input)
     r = np.empty_like(input)
     _algo.hhvbars(r, input, periods)
+    return r
+
+def HHVBARS_V[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: A
+) -> A:
+  """
+  The number of periods that have passed since the array reached its variable `periods` period high
+  
+  Ref: https://www.amibroker.com/guide/afl/hhvbars.html
+  """
+  if isinstance(input, list) and isinstance(periods, list):
+    input = [_to_f64(x) for x in input]
+    periods = [_to_usize(x) for x in periods]
+    r = [np.empty_like(x) for x in input]
+    _algo.hhvbars_v(r, input, periods)
+    return r
+  else:
+    input = _to_f64(input)
+    periods = _to_usize(periods)
+    r = np.empty_like(input)
+    _algo.hhvbars_v(r, input, periods)
     return r
 
 def INTERCEPT[A: np.ndarray | list[np.ndarray]](
@@ -574,6 +679,27 @@ def LLV[A: np.ndarray | list[np.ndarray]](
     _algo.llv(r, input, periods)
     return r
 
+def LLV_V[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: A
+) -> A:
+  """
+  Find lowest value in a preceding variable `periods` window
+  
+  Ref: https://www.amibroker.com/guide/afl/llv.html
+  """
+  if isinstance(input, list) and isinstance(periods, list):
+    input = [_to_f64(x) for x in input]
+    periods = [_to_usize(x) for x in periods]
+    r = [np.empty_like(x) for x in input]
+    _algo.llv_v(r, input, periods)
+    return r
+  else:
+    input = _to_f64(input)
+    periods = _to_usize(periods)
+    r = np.empty_like(input)
+    _algo.llv_v(r, input, periods)
+    return r
+
 def LLVBARS[A: np.ndarray | list[np.ndarray]](
   input: A, periods: int
 ) -> A:
@@ -591,6 +717,27 @@ def LLVBARS[A: np.ndarray | list[np.ndarray]](
     input = _to_f64(input)
     r = np.empty_like(input)
     _algo.llvbars(r, input, periods)
+    return r
+
+def LLVBARS_V[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: A
+) -> A:
+  """
+  The number of periods that have passed since the array reached its variable `periods` period low
+  
+  Ref: https://www.amibroker.com/guide/afl/llvbars.html
+  """
+  if isinstance(input, list) and isinstance(periods, list):
+    input = [_to_f64(x) for x in input]
+    periods = [_to_usize(x) for x in periods]
+    r = [np.empty_like(x) for x in input]
+    _algo.llvbars_v(r, input, periods)
+    return r
+  else:
+    input = _to_f64(input)
+    periods = _to_usize(periods)
+    r = np.empty_like(input)
+    _algo.llvbars_v(r, input, periods)
     return r
 
 def LONGCROSS[A: np.ndarray | list[np.ndarray]](
@@ -631,6 +778,27 @@ def LWMA[A: np.ndarray | list[np.ndarray]](
     _algo.lwma(r, input, periods)
     return r
 
+def LWMA_V[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: A
+) -> A:
+  """
+  Linear Weighted Moving Average with variable periods
+  
+  LWMA = SUM(Price * Weight) / SUM(Weight)
+  """
+  if isinstance(input, list) and isinstance(periods, list):
+    input = [_to_f64(x) for x in input]
+    periods = [_to_usize(x) for x in periods]
+    r = [np.empty_like(x) for x in input]
+    _algo.lwma_v(r, input, periods)
+    return r
+  else:
+    input = _to_f64(input)
+    periods = _to_usize(periods)
+    r = np.empty_like(input)
+    _algo.lwma_v(r, input, periods)
+    return r
+
 def MA[A: np.ndarray | list[np.ndarray]](
   input: A, periods: int
 ) -> A:
@@ -648,6 +816,27 @@ def MA[A: np.ndarray | list[np.ndarray]](
     input = _to_f64(input)
     r = np.empty_like(input)
     _algo.ma(r, input, periods)
+    return r
+
+def MA_V[A: np.ndarray | list[np.ndarray]](
+  input: A, periods: A
+) -> A:
+  """
+  Simple Moving Average with variable periods
+  
+  Ref: https://en.wikipedia.org/wiki/Moving_average#Simple_moving_average
+  """
+  if isinstance(input, list) and isinstance(periods, list):
+    input = [_to_f64(x) for x in input]
+    periods = [_to_usize(x) for x in periods]
+    r = [np.empty_like(x) for x in input]
+    _algo.ma_v(r, input, periods)
+    return r
+  else:
+    input = _to_f64(input)
+    periods = _to_usize(periods)
+    r = np.empty_like(input)
+    _algo.ma_v(r, input, periods)
     return r
 
 def MAX_DRAWDOWN[A: np.ndarray | list[np.ndarray]](
@@ -1042,6 +1231,27 @@ def SMA[A: np.ndarray | list[np.ndarray]](
     input = _to_f64(input)
     r = np.empty_like(input)
     _algo.sma(r, input, n, m)
+    return r
+
+def SMA_V[A: np.ndarray | list[np.ndarray]](
+  input: A, ns: A, m: int
+) -> A:
+  """
+  Exponential Moving Average (variant of well-known EMA) weight = m / n with variable periods
+  
+  Ref: https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
+  """
+  if isinstance(input, list) and isinstance(ns, list):
+    input = [_to_f64(x) for x in input]
+    ns = [_to_usize(x) for x in ns]
+    r = [np.empty_like(x) for x in input]
+    _algo.sma_v(r, input, ns, m)
+    return r
+  else:
+    input = _to_f64(input)
+    ns = _to_usize(ns)
+    r = np.empty_like(input)
+    _algo.sma_v(r, input, ns, m)
     return r
 
 def STDDEV[A: np.ndarray | list[np.ndarray]](

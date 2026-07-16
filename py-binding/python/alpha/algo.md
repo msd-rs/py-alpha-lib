@@ -15,24 +15,33 @@ the `np.ndarray` is `ndarray` type in `numpy` package
 - CORR2(x: np.ndarray[float], y: np.ndarray[float], periods: int): Calculate two series correlation over a moving window  Correlation = Cov(X, Y) / (StdDev(X) * StdDev(Y))
 - COUNT(input: np.ndarray[bool], periods: int): Calculate number of periods where condition is true in passed `periods` window
 - COUNT_NANS(input: np.ndarray[float], periods: int): Count number of NaN values in a rolling window  For each position, counts the number of NaN values in the preceding `periods` elements.
+- COUNT_V(input: np.ndarray[bool], periods: np.ndarray[int]): Calculate number of periods where condition is true in passed variable `periods` window
 - COV(x: np.ndarray[float], y: np.ndarray[float], periods: int): Calculate Covariance over a moving window  Covariance = (SumXY - (SumX * SumY) / N) / (N - 1)
 - CROSS(a: np.ndarray[float], b: np.ndarray[float]): For 2 arrays A and B, return true if A[i-1] < B[i-1] and A[i] >= B[i] alias: golden_cross, cross_ge
 - DMA(input: np.ndarray[float], weight: float): Exponential Moving Average current = weight * current + (1 - weight) * previous
+- DMA_V(input: np.ndarray[float], weight: np.ndarray[float]): Exponential Moving Average with variable weight
 - EMA(input: np.ndarray[float], periods: int): Exponential Moving Average (variant of well-known EMA) weight = 2 / (n + 1)
+- EMA_V(input: np.ndarray[float], periods: np.ndarray[int]): Exponential Moving Average with variable periods
 - ENTROPY(input: np.ndarray[float], periods: int, bins: int): Calculate rolling Shannon entropy over a moving window  Discretizes values into `bins` equal-width buckets within the window's [min, max] range, then computes -sum(p * ln(p)) where p is the frequency of each occupied bin. Uses natural log (base e). Requires at least 2 valid values. Single-value windows return 0.
 - FRET(open: np.ndarray[float], close: np.ndarray[float], is_calc: np.ndarray[float], delay: int, periods: int): Future Return  Calculates the return from the open price of the delayed day (t+delay) to the close price of the future day (t+delay+periods-1). Return = (Close[t+delay+periods-1] - Open[t+delay]) / Open[t+delay]  If n=1, delay=1, it calculates (Close[t+1] - Open[t+1]) / Open[t+1]. If `is_calc[t+delay]` is 0, returns NaN.
 - FW_SPLIT(price: np.ndarray[float], dividend: np.ndarray[float], transfer_shares: np.ndarray[float], right_shares: np.ndarray[float], right_price: np.ndarray[float]): Forward split and dividend adjustment  Adjusts prices forward (from earliest to latest event) using a loop for precise calculation.
 - GROUP_RANK(category: np.ndarray[float], input: np.ndarray[float]): Calculate rank percentage within each category group at each time step  For each time position, groups items by `category` value, then computes rank percentage within each group. Same value gets averaged rank. NaN in category or input produces NaN output.
 - GROUP_ZSCORE(category: np.ndarray[float], input: np.ndarray[float]): Calculate Z-Score within each category group at each time step  For each time position, groups items by `category` value, then computes (x - group_mean) / group_std within each group. NaN in category or input produces NaN output. Groups with fewer than 2 valid values produce NaN.
 - HHV(input: np.ndarray[float], periods: int): Find highest value in a preceding `periods` window
+- HHV_V(input: np.ndarray[float], periods: np.ndarray[int]): Find highest value in a preceding variable `periods` window
 - HHVBARS(input: np.ndarray[float], periods: int): The number of periods that have passed since the array reached its `periods` period high
+- HHVBARS_V(input: np.ndarray[float], periods: np.ndarray[int]): The number of periods that have passed since the array reached its variable `periods` period high
 - INTERCEPT(input: np.ndarray[float], periods: int): Linear Regression Intercept  Calculates the intercept of the linear regression line for a moving window.
 - KURTOSIS(input: np.ndarray[float], periods: int): Calculate rolling sample excess Kurtosis over a moving window  Uses adjusted Fisher formula (matches pandas): kurt = n(n+1)/((n-1)(n-2)(n-3)) * sum(((x-mean)/std)^4) - 3(n-1)^2/((n-2)(n-3)) Requires at least 4 valid values.
 - LLV(input: np.ndarray[float], periods: int): Find lowest value in a preceding `periods` window
+- LLV_V(input: np.ndarray[float], periods: np.ndarray[int]): Find lowest value in a preceding variable `periods` window
 - LLVBARS(input: np.ndarray[float], periods: int): The number of periods that have passed since the array reached its periods period low
+- LLVBARS_V(input: np.ndarray[float], periods: np.ndarray[int]): The number of periods that have passed since the array reached its variable `periods` period low
 - LONGCROSS(a: np.ndarray[float], b: np.ndarray[float], n: int): For 2 arrays A and B, return true if previous N periods A < B, Current A >= B
 - LWMA(input: np.ndarray[float], periods: int): Linear Weighted Moving Average  LWMA = SUM(Price * Weight) / SUM(Weight)
+- LWMA_V(input: np.ndarray[float], periods: np.ndarray[int]): Linear Weighted Moving Average with variable periods  LWMA = SUM(Price * Weight) / SUM(Weight)
 - MA(input: np.ndarray[float], periods: int): Simple Moving Average, also known as arithmetic moving average
+- MA_V(input: np.ndarray[float], periods: np.ndarray[int]): Simple Moving Average with variable periods
 - MAX_DRAWDOWN(input: np.ndarray[float], periods: int): Rolling Maximum Drawdown.  MaxDrawdown = minimum peak-to-trough decline within the rolling window. Result is expressed as a negative return (e.g. -0.2 means 20% drawdown from peak). Input should be a price or equity curve series.
 - MIN_MAX_DIFF(input: np.ndarray[float], periods: int): Calculate rolling min-max difference (range) over a moving window  TS_MIN_MAX_DIFF = TS_MAX(x, d) - TS_MIN(x, d) Single-pass using two monotonic deques for efficiency.
 - MOMENT(input: np.ndarray[float], periods: int, k: int): Calculate rolling k-th central moment over a moving window  MOMENT(x, d, k) = mean((x - mean)^k) over window of d periods. This is the raw (non-adjusted) sample moment. k=2 gives variance (population), k=3 gives raw third moment, etc.
@@ -52,6 +61,7 @@ the `np.ndarray` is `ndarray` type in `numpy` package
 - SKEWNESS(input: np.ndarray[float], periods: int): Calculate rolling sample Skewness over a moving window  Uses adjusted Fisher-Pearson formula (matches pandas): skew = n / ((n-1)(n-2)) * sum(((x-mean)/std)^3) Requires at least 3 valid values.
 - SLOPE(input: np.ndarray[float], periods: int): Linear Regression Slope  Calculates the slope of the linear regression line for a moving window.
 - SMA(input: np.ndarray[float], n: int, m: int): Exponential Moving Average (variant of well-known EMA) weight = m / n
+- SMA_V(input: np.ndarray[float], ns: np.ndarray[int], m: int): Exponential Moving Average (variant of well-known EMA) weight = m / n with variable periods
 - STDDEV(input: np.ndarray[float], periods: int): Calculate Standard Deviation over a moving window
 - SUM(input: np.ndarray[float], periods: int): Calculate sum of values in preceding `periods` window  If periods is 0, it calculates the cumulative sum from the first valid value.
 - SUMBARS(input: np.ndarray[float], amount: float): Calculate number of periods (bars) backwards until the sum of values is greater than or equal to `amount`

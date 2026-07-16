@@ -263,6 +263,61 @@ pub fn ta_count<NumT: Float + Send + Sync>(
   Ok(())
 }
 
+/// Calculate number of periods where condition is true in passed variable `periods` window
+///
+/// Ref: https://www.amibroker.com/guide/afl/count.html
+pub fn ta_count_v<NumT: Float + Send + Sync>(
+  ctx: &Context,
+  r: &mut [NumT],
+  input: &[bool],
+  periods: &[usize],
+) -> Result<(), Error> {
+  if r.len() != input.len() {
+    return Err(Error::LengthMismatch(r.len(), input.len()));
+  }
+  if r.len() != periods.len() {
+    return Err(Error::LengthMismatch(r.len(), periods.len()));
+  }
+
+  r.par_chunks_mut(ctx.chunk_size(r.len()))
+    .zip(input.par_chunks(ctx.chunk_size(input.len())))
+    .zip(periods.par_chunks(ctx.chunk_size(periods.len())))
+    .for_each(|((r, x), p)| {
+      let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
+      r.fill(NumT::nan());
+
+      let mut pref = vec![0; r.len() + 1];
+      for k in 0..r.len() {
+        pref[k + 1] = pref[k] + (if x[k] { 1 } else { 0 });
+      }
+
+      for i in start..end {
+        let period = p[i];
+        let start_idx = if period == 0 { 0 } else { if i >= period { i + 1 - period } else { 0 } };
+        
+        let mut can_write = false;
+        if period == 0 {
+          can_write = true;
+        } else {
+          if ctx.is_strictly_cycle() {
+            if i >= period - 1 {
+              can_write = true;
+            }
+          } else {
+            can_write = true;
+          }
+        }
+
+        if can_write {
+          r[i] = NumT::from(pref[i + 1] - pref[start_idx]).unwrap();
+        }
+      }
+    });
+
+  Ok(())
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -357,5 +412,15 @@ mod tests {
     let ctx = Context::new(0, 0, FLAG_STRICTLY_CYCLE);
     ta_count(&ctx, &mut r, &input, 3).unwrap();
     assert_vec_eq_nan(&r, &vec![f64::NAN, f64::NAN, 2.0]);
+  }
+
+  #[test]
+  fn test_ta_count_v() {
+    let input = vec![true, false, true, true, false];
+    let periods = vec![3, 3, 3, 3, 3];
+    let mut r = vec![0.0; input.len()];
+    let ctx = Context::new(0, 0, 0);
+    ta_count_v(&ctx, &mut r, &input, &periods).unwrap();
+    assert_vec_eq_nan(&r, &vec![1.0, 1.0, 2.0, 2.0, 2.0]);
   }
 }

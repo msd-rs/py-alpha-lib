@@ -104,6 +104,15 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       })?,
     )?;
     lua.globals().set(
+      "COUNT_V",
+      lua.create_function(|lua, (input, periods): (BoolArray, NumArray)| {
+        let mut r = vec![0.0; input.len()];
+        let periods_usize: Vec<usize> = periods.iter().map(|&x| x as usize).collect();
+        ta_count_v::<f64>(&ctx(lua), &mut r, &input, &periods_usize)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
       "COV",
       lua.create_function(|lua, (x, y, periods): (NumArray, NumArray, usize)| {
         let mut r = vec![0.0; x.len()];
@@ -128,10 +137,27 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       })?,
     )?;
     lua.globals().set(
+      "DMA_V",
+      lua.create_function(|lua, (input, weight): (NumArray, NumArray)| {
+        let mut r = vec![0.0; input.len()];
+        ta_dma_v::<f64>(&ctx(lua), &mut r, &input, &weight)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
       "EMA",
       lua.create_function(|lua, (input, periods): (NumArray, usize)| {
         let mut r = vec![0.0; input.len()];
         ta_ema::<f64>(&ctx(lua), &mut r, &input, periods)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
+      "EMA_V",
+      lua.create_function(|lua, (input, periods): (NumArray, NumArray)| {
+        let mut r = vec![0.0; input.len()];
+        let periods_usize: Vec<usize> = periods.iter().map(|&x| x as usize).collect();
+        ta_ema_v::<f64>(&ctx(lua), &mut r, &input, &periods_usize)?;
         Ok(NumArray::from(r))
       })?,
     )?;
@@ -184,10 +210,28 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       })?,
     )?;
     lua.globals().set(
+      "HHV_V",
+      lua.create_function(|lua, (input, periods): (NumArray, NumArray)| {
+        let mut r = vec![0.0; input.len()];
+        let periods_usize: Vec<usize> = periods.iter().map(|&x| x as usize).collect();
+        ta_hhv_v::<f64>(&ctx(lua), &mut r, &input, &periods_usize)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
       "HHVBARS",
       lua.create_function(|lua, (input, periods): (NumArray, usize)| {
         let mut r = vec![0.0; input.len()];
         ta_hhvbars::<f64>(&ctx(lua), &mut r, &input, periods)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
+      "HHVBARS_V",
+      lua.create_function(|lua, (input, periods): (NumArray, NumArray)| {
+        let mut r = vec![0.0; input.len()];
+        let periods_usize: Vec<usize> = periods.iter().map(|&x| x as usize).collect();
+        ta_hhvbars_v::<f64>(&ctx(lua), &mut r, &input, &periods_usize)?;
         Ok(NumArray::from(r))
       })?,
     )?;
@@ -216,10 +260,28 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       })?,
     )?;
     lua.globals().set(
+      "LLV_V",
+      lua.create_function(|lua, (input, periods): (NumArray, NumArray)| {
+        let mut r = vec![0.0; input.len()];
+        let periods_usize: Vec<usize> = periods.iter().map(|&x| x as usize).collect();
+        ta_llv_v::<f64>(&ctx(lua), &mut r, &input, &periods_usize)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
       "LLVBARS",
       lua.create_function(|lua, (input, periods): (NumArray, usize)| {
         let mut r = vec![0.0; input.len()];
         ta_llvbars::<f64>(&ctx(lua), &mut r, &input, periods)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
+      "LLVBARS_V",
+      lua.create_function(|lua, (input, periods): (NumArray, NumArray)| {
+        let mut r = vec![0.0; input.len()];
+        let periods_usize: Vec<usize> = periods.iter().map(|&x| x as usize).collect();
+        ta_llvbars_v::<f64>(&ctx(lua), &mut r, &input, &periods_usize)?;
         Ok(NumArray::from(r))
       })?,
     )?;
@@ -240,10 +302,28 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       })?,
     )?;
     lua.globals().set(
+      "LWMA_V",
+      lua.create_function(|lua, (input, periods): (NumArray, NumArray)| {
+        let mut r = vec![0.0; input.len()];
+        let periods_usize: Vec<usize> = periods.iter().map(|&x| x as usize).collect();
+        ta_lwma_v::<f64>(&ctx(lua), &mut r, &input, &periods_usize)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
       "MA",
       lua.create_function(|lua, (input, periods): (NumArray, usize)| {
         let mut r = vec![0.0; input.len()];
         ta_ma::<f64>(&ctx(lua), &mut r, &input, periods)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
+      "MA_V",
+      lua.create_function(|lua, (input, periods): (NumArray, NumArray)| {
+        let mut r = vec![0.0; input.len()];
+        let periods_usize: Vec<usize> = periods.iter().map(|&x| x as usize).collect();
+        ta_ma_v::<f64>(&ctx(lua), &mut r, &input, &periods_usize)?;
         Ok(NumArray::from(r))
       })?,
     )?;
@@ -397,6 +477,15 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       lua.create_function(|lua, (input, n, m): (NumArray, usize, usize)| {
         let mut r = vec![0.0; input.len()];
         ta_sma::<f64>(&ctx(lua), &mut r, &input, n, m)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
+      "SMA_V",
+      lua.create_function(|lua, (input, ns, m): (NumArray, NumArray, usize)| {
+        let mut r = vec![0.0; input.len()];
+        let ns_usize: Vec<usize> = ns.iter().map(|&x| x as usize).collect();
+        ta_sma_v::<f64>(&ctx(lua), &mut r, &input, &ns_usize, m)?;
         Ok(NumArray::from(r))
       })?,
     )?;

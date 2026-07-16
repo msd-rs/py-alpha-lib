@@ -70,6 +70,219 @@ pub fn ta_llvbars<NumT: Float + Send + Sync>(
   )
 }
 
+/// Find highest value in a preceding variable `periods` window
+///
+/// Ref: https://www.amibroker.com/guide/afl/hhv.html
+pub fn ta_hhv_v<NumT: Float + Send + Sync>(
+  ctx: &Context,
+  r: &mut [NumT],
+  input: &[NumT],
+  periods: &[usize],
+) -> Result<(), Error> {
+  run_extremum_v(ctx, r, input, periods, |a, b| a >= b, |_, _, val| val)
+}
+
+/// Find lowest value in a preceding variable `periods` window
+///
+/// Ref: https://www.amibroker.com/guide/afl/llv.html
+pub fn ta_llv_v<NumT: Float + Send + Sync>(
+  ctx: &Context,
+  r: &mut [NumT],
+  input: &[NumT],
+  periods: &[usize],
+) -> Result<(), Error> {
+  run_extremum_v(ctx, r, input, periods, |a, b| a <= b, |_, _, val| val)
+}
+
+/// The number of periods that have passed since the array reached its variable `periods` period high
+///
+/// Ref: https://www.amibroker.com/guide/afl/hhvbars.html
+pub fn ta_hhvbars_v<NumT: Float + Send + Sync>(
+  ctx: &Context,
+  r: &mut [NumT],
+  input: &[NumT],
+  periods: &[usize],
+) -> Result<(), Error> {
+  run_extremum_v(
+    ctx,
+    r,
+    input,
+    periods,
+    |a, b| a >= b,
+    |best_idx, curr_idx, _| NumT::from(curr_idx - best_idx).unwrap(),
+  )
+}
+
+/// The number of periods that have passed since the array reached its variable `periods` period low
+///
+/// Ref: https://www.amibroker.com/guide/afl/llvbars.html
+pub fn ta_llvbars_v<NumT: Float + Send + Sync>(
+  ctx: &Context,
+  r: &mut [NumT],
+  input: &[NumT],
+  periods: &[usize],
+) -> Result<(), Error> {
+  run_extremum_v(
+    ctx,
+    r,
+    input,
+    periods,
+    |a, b| a <= b,
+    |best_idx, curr_idx, _| NumT::from(curr_idx - best_idx).unwrap(),
+  )
+}
+
+fn run_extremum_v<NumT, FComp, FOut>(
+  ctx: &Context,
+  r: &mut [NumT],
+  input: &[NumT],
+  periods: &[usize],
+  compare: FComp,
+  output: FOut,
+) -> Result<(), Error>
+where
+  NumT: Float + Send + Sync,
+  FComp: Fn(NumT, NumT) -> bool + Sync + Send,
+  FOut: Fn(usize, usize, NumT) -> NumT + Sync + Send,
+{
+  if r.len() != input.len() {
+    return Err(Error::LengthMismatch(r.len(), input.len()));
+  }
+  if r.len() != periods.len() {
+    return Err(Error::LengthMismatch(r.len(), periods.len()));
+  }
+
+  r.par_chunks_mut(ctx.chunk_size(r.len()))
+    .zip(input.par_chunks(ctx.chunk_size(input.len())))
+    .zip(periods.par_chunks(ctx.chunk_size(periods.len())))
+    .for_each(|((r, x), p)| {
+      let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
+      r.fill(NumT::nan());
+
+      let mut deque: VecDeque<usize> = VecDeque::new();
+
+      if ctx.is_skip_nan() {
+        let mut history_indices = Vec::with_capacity(r.len());
+        let mut history_vals = Vec::with_capacity(r.len());
+        for i in start..end {
+          let val = x[i];
+          if is_normal(&val) {
+            history_indices.push(i);
+            history_vals.push(val);
+            let l = history_vals.len();
+            let curr_hist_idx = l - 1;
+
+            while let Some(&back_idx) = deque.back() {
+              if compare(val, history_vals[back_idx]) {
+                deque.pop_back();
+              } else {
+                break;
+              }
+            }
+            deque.push_back(curr_hist_idx);
+
+            let period = p[i];
+            let start_hist_idx = if period == 0 { 0 } else { if l >= period { l - period } else { 0 } };
+            
+            while let Some(&front_idx) = deque.front() {
+              if front_idx < start_hist_idx {
+                deque.pop_front();
+              } else {
+                break;
+              }
+            }
+
+            let mut can_write = false;
+            if period == 0 {
+              can_write = true;
+            } else {
+              if ctx.is_strictly_cycle() {
+                if l >= period && (i - history_indices[start_hist_idx] + 1 == period) {
+                  can_write = true;
+                }
+              } else {
+                can_write = true;
+              }
+            }
+
+            if can_write {
+              if let Some(&best_hist_idx) = deque.front() {
+                let best_orig_idx = history_indices[best_hist_idx];
+                r[i] = output(best_orig_idx, i, history_vals[best_hist_idx]);
+              }
+            }
+          }
+        }
+      } else {
+        // !skip_nan
+        let mut nan_pref = vec![0; r.len() + 1];
+        for k in 0..r.len() {
+          let val = x[k];
+          if is_normal(&val) {
+            nan_pref[k + 1] = nan_pref[k];
+          } else {
+            nan_pref[k + 1] = nan_pref[k] + 1;
+          }
+        }
+
+        for i in 0..end {
+          let val = x[i];
+          if is_normal(&val) {
+            while let Some(&back_idx) = deque.back() {
+              if compare(val, x[back_idx]) {
+                deque.pop_back();
+              } else {
+                break;
+              }
+            }
+            deque.push_back(i);
+          }
+
+          if i >= start {
+            if !is_normal(&val) {
+              continue;
+            }
+            let period = p[i];
+            let start_idx = if period == 0 { 0 } else { if i >= period { i + 1 - period } else { 0 } };
+            
+            while let Some(&front_idx) = deque.front() {
+              if front_idx < start_idx {
+                deque.pop_front();
+              } else {
+                break;
+              }
+            }
+
+            let nan_in_window = nan_pref[i + 1] - nan_pref[start_idx];
+            if nan_in_window == 0 {
+              let mut can_write = false;
+              if period == 0 {
+                can_write = true;
+              } else {
+                if ctx.is_strictly_cycle() {
+                  if i >= period - 1 {
+                    can_write = true;
+                  }
+                } else {
+                  can_write = true;
+                }
+              }
+
+              if can_write {
+                if let Some(&best_idx) = deque.front() {
+                  r[i] = output(best_idx, i, x[best_idx]);
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+  Ok(())
+}
+
 fn run_extremum<NumT, FComp, FOut>(
   ctx: &Context,
   r: &mut [NumT],
@@ -361,5 +574,15 @@ mod tests {
     // 3: 4.0 (2,3,4)
     ta_hhv(&ctx, &mut r, &input, 3).unwrap();
     assert_vec_eq_nan(&r, &vec![f64::NAN, f64::NAN, 3.0, 4.0]);
+  }
+
+  #[test]
+  fn test_ta_hhv_v() {
+    let input = vec![1.0, 3.0, 2.0, 5.0, 4.0, 6.0];
+    let periods = vec![3, 3, 3, 3, 3, 3];
+    let mut r = vec![0.0; input.len()];
+    let ctx = Context::new(0, 0, 0);
+    ta_hhv_v(&ctx, &mut r, &input, &periods).unwrap();
+    assert_vec_eq_nan(&r, &vec![1.0, 3.0, 3.0, 5.0, 5.0, 6.0]);
   }
 }

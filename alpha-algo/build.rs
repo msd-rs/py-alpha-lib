@@ -789,6 +789,270 @@ fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
         )?;
         writeln!(code, "  }}")?;
         continue;
+      } else if !r_is_bool && a_is_bool && b_is_int {
+        // ta_count_v case: r=num, a=bool, b=int array
+        // Support f64 and f32 for output, bool for input, usize for the third array.
+
+        // f64 output
+        writeln!(
+          code,
+          "    if let Some(((mut {}, {}), {})) = {}",
+          r_name, a_name, b_name, r_name
+        )?;
+        writeln!(
+          code,
+          "      .extract::<PyReadwriteArray1<'py, f64>>() .ok()"
+        )?;
+        writeln!(
+          code,
+          "      .zip({}.extract::<PyReadonlyArray1<'py, bool>>().ok())",
+          a_name
+        )?;
+        writeln!(
+          code,
+          "      .zip({}.extract::<PyReadonlyArray1<'py, usize>>().ok()) {{",
+          b_name
+        )?;
+
+        writeln!(
+          code,
+          "      let mut {} = {}.as_array_mut();",
+          r_name, r_name
+        )?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice_mut().ok_or(PyValueError::new_err(\"failed to get mutable slice\"))?;",
+          r_name, r_name
+        )?;
+        writeln!(code, "      let {} = {}.as_array();", a_name, a_name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          a_name, a_name
+        )?;
+        writeln!(code, "      let {} = {}.as_array();", b_name, b_name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          b_name, b_name
+        )?;
+
+        writeln!(
+          code,
+          "      {}(&ctx, {}, {}, {}{}).map_err(|e| e.into())",
+          rust_func_name, r_name, a_name, b_name, args_f64
+        )?;
+
+        // f32 output
+        writeln!(
+          code,
+          "    }} else if let Some(((mut {}, {}), {})) = {}",
+          r_name, a_name, b_name, r_name
+        )?;
+        writeln!(
+          code,
+          "      .extract::<PyReadwriteArray1<'py, f32>>() .ok()"
+        )?;
+        writeln!(
+          code,
+          "      .zip({}.extract::<PyReadonlyArray1<'py, bool>>().ok())",
+          a_name
+        )?;
+        writeln!(
+          code,
+          "      .zip({}.extract::<PyReadonlyArray1<'py, usize>>().ok()) {{",
+          b_name
+        )?;
+
+        writeln!(
+          code,
+          "      let mut {} = {}.as_array_mut();",
+          r_name, r_name
+        )?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice_mut().ok_or(PyValueError::new_err(\"failed to get mutable slice\"))?;",
+          r_name, r_name
+        )?;
+        writeln!(code, "      let {} = {}.as_array();", a_name, a_name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          a_name, a_name
+        )?;
+        writeln!(code, "      let {} = {}.as_array();", b_name, b_name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          b_name, b_name
+        )?;
+
+        writeln!(
+          code,
+          "      {}(&ctx, {}, {}, {}{}).map_err(|e| e.into())",
+          rust_func_name, r_name, a_name, b_name, args_f32
+        )?;
+
+        // PyList support for count_v
+        writeln!(
+          code,
+          "    }} else if let Some((({}, {}), {})) = {}.cast::<PyList>().ok().zip({}.cast::<PyList>().ok()).zip({}.cast::<PyList>().ok()) {{",
+          r_name, a_name, b_name, r_name, a_name, b_name
+        )?;
+        writeln!(
+          code,
+          "      if {}.len() != {}.len() || {}.len() != {}.len() {{ return Err(PyValueError::new_err(\"length mismatch\")); }}",
+          r_name, a_name, b_name, a_name
+        )?;
+
+        // PyList f64
+        writeln!(
+          code,
+          "      if let Some(((mut {}, {}), {})) = {}",
+          r_name, a_name, b_name, r_name
+        )?;
+        writeln!(
+          code,
+          "        .extract::<Vec<PyReadwriteArray1<'py, f64>>>().ok()"
+        )?;
+        writeln!(
+          code,
+          "        .zip({}.extract::<Vec<PyReadonlyArray1<'py, bool>>>().ok())",
+          a_name
+        )?;
+        writeln!(
+          code,
+          "        .zip({}.extract::<Vec<PyReadonlyArray1<'py, usize>>>().ok()) {{",
+          b_name
+        )?;
+
+        writeln!(
+          code,
+          "        let {} = {}.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();",
+          r_name, r_name
+        )?;
+        writeln!(
+          code,
+          "        let {} = {}.iter().map(|x| x.as_array()).collect::<Vec<_>>();",
+          a_name, a_name
+        )?;
+        writeln!(
+          code,
+          "        let {} = {}.iter().map(|x| x.as_array()).collect::<Vec<_>>();",
+          b_name, b_name
+        )?;
+        writeln!(code, "        let mut _r = vec![];")?;
+        writeln!(
+          code,
+          "        {}.into_par_iter().zip({}.into_par_iter()).zip({}.into_par_iter())",
+          r_name, a_name, b_name
+        )?;
+        writeln!(code, "          .map(|((mut out, a), b)| {{")?;
+        writeln!(
+          code,
+          "            let {} = out.as_slice_mut().ok_or(PyValueError::new_err(\"failed to get mutable slice\"))?;",
+          r_name
+        )?;
+        writeln!(
+          code,
+          "            let {} = a.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          a_name
+        )?;
+        writeln!(
+          code,
+          "            let {} = b.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          b_name
+        )?;
+        writeln!(
+          code,
+          "            {}(&ctx, {}, {}, {}{}).map_err(|e| e.into())",
+          rust_func_name, r_name, a_name, b_name, args_f64
+        )?;
+        writeln!(code, "          }}).collect_into_vec(&mut _r);")?;
+        writeln!(
+          code,
+          "        match _r.into_iter().find(|x| x.is_err()) {{ Some(e) => e, None => Ok(()) }}"
+        )?;
+
+        // PyList f32
+        writeln!(
+          code,
+          "      }} else if let Some(((mut {}, {}), {})) = {}",
+          r_name, a_name, b_name, r_name
+        )?;
+        writeln!(
+          code,
+          "        .extract::<Vec<PyReadwriteArray1<'py, f32>>>().ok()"
+        )?;
+        writeln!(
+          code,
+          "        .zip({}.extract::<Vec<PyReadonlyArray1<'py, bool>>>().ok())",
+          a_name
+        )?;
+        writeln!(
+          code,
+          "        .zip({}.extract::<Vec<PyReadonlyArray1<'py, usize>>>().ok()) {{",
+          b_name
+        )?;
+
+        writeln!(
+          code,
+          "        let {} = {}.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();",
+          r_name, r_name
+        )?;
+        writeln!(
+          code,
+          "        let {} = {}.iter().map(|x| x.as_array()).collect::<Vec<_>>();",
+          a_name, a_name
+        )?;
+        writeln!(
+          code,
+          "        let {} = {}.iter().map(|x| x.as_array()).collect::<Vec<_>>();",
+          b_name, b_name
+        )?;
+        writeln!(code, "        let mut _r = vec![];")?;
+        writeln!(
+          code,
+          "        {}.into_par_iter().zip({}.into_par_iter()).zip({}.into_par_iter())",
+          r_name, a_name, b_name
+        )?;
+        writeln!(code, "          .map(|((mut out, a), b)| {{")?;
+        writeln!(
+          code,
+          "            let {} = out.as_slice_mut().ok_or(PyValueError::new_err(\"failed to get mutable slice\"))?;",
+          r_name
+        )?;
+        writeln!(
+          code,
+          "            let {} = a.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          a_name
+        )?;
+        writeln!(
+          code,
+          "            let {} = b.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          b_name
+        )?;
+        writeln!(
+          code,
+          "            {}(&ctx, {}, {}, {}{}).map_err(|e| e.into())",
+          rust_func_name, r_name, a_name, b_name, args_f32
+        )?;
+        writeln!(code, "          }}).collect_into_vec(&mut _r);")?;
+        writeln!(
+          code,
+          "        match _r.into_iter().find(|x| x.is_err()) {{ Some(e) => e, None => Ok(()) }}"
+        )?;
+        writeln!(
+          code,
+          "      }} else {{ Err(PyValueError::new_err(\"invalid input list\")) }}"
+        )?;
+
+        writeln!(
+          code,
+          "    }} else {{ Err(PyValueError::new_err(\"invalid input (expected float, bool, int)\")) }}"
+        )?;
+        writeln!(code, "  }}")?;
+        continue;
       } else if !r_is_bool && !a_is_bool && b_is_int {
         // ref_v case: r=num, a=num, b=int array
         // Support f64 and f32 for output and input, but usize for the third array.
@@ -839,8 +1103,8 @@ fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
 
         writeln!(
           code,
-          "      {}(&ctx, {}, {}, {}).map_err(|e| e.into())",
-          rust_func_name, r_name, a_name, b_name
+          "      {}(&ctx, {}, {}, {}{}).map_err(|e| e.into())",
+          rust_func_name, r_name, a_name, b_name, args_f64
         )?;
 
         // f32
@@ -889,8 +1153,8 @@ fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
 
         writeln!(
           code,
-          "      {}(&ctx, {}, {}, {}).map_err(|e| e.into())",
-          rust_func_name, r_name, a_name, b_name
+          "      {}(&ctx, {}, {}, {}{}).map_err(|e| e.into())",
+          rust_func_name, r_name, a_name, b_name, args_f32
         )?;
 
         // PyList support
@@ -965,8 +1229,8 @@ fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
         )?;
         writeln!(
           code,
-          "            {}(&ctx, {}, {}, {}).map_err(|e| e.into())",
-          rust_func_name, r_name, a_name, b_name
+          "            {}(&ctx, {}, {}, {}{}).map_err(|e| e.into())",
+          rust_func_name, r_name, a_name, b_name, args_f64
         )?;
         writeln!(code, "          }}).collect_into_vec(&mut _r);")?;
         writeln!(
@@ -1034,8 +1298,8 @@ fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
         )?;
         writeln!(
           code,
-          "            {}(&ctx, {}, {}, {}).map_err(|e| e.into())",
-          rust_func_name, r_name, a_name, b_name
+          "            {}(&ctx, {}, {}, {}{}).map_err(|e| e.into())",
+          rust_func_name, r_name, a_name, b_name, args_f32
         )?;
         writeln!(code, "          }}).collect_into_vec(&mut _r);")?;
         writeln!(
@@ -2185,10 +2449,15 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
       )?;
 
       // Output initialization
-      let dtype = if r_is_bool { ", dtype=bool" } else { "" }; // Note: numpy default float usually, but strict bool output?
-      // Wait, for CROSS, rust returns bool. Python numpy bool array.
-      // If we want float 0/1, we should convert?
-      // Let's stick to bool for now, user can cast.
+      let template_type = if a_is_bool { arrays[2].1 } else { arrays[1].1 };
+      let is_template_float = matches!(template_type, TaType::NumArray(_));
+      let dtype = if r_is_bool {
+        ", dtype=bool"
+      } else if !is_template_float {
+        ", dtype=float"
+      } else {
+        ""
+      };
 
       writeln!(
         file,
