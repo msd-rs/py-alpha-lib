@@ -8,7 +8,7 @@ use crate::algo::{Context, Error, is_normal};
 
 /// Forward split and dividend adjustment
 ///
-/// Adjusts prices forward (from earliest to latest event) using a loop for precise calculation.
+/// Adjusts prices forward (from earliest to latest event) using a loop according to arithmetic progression.
 pub fn ta_fw_split<NumT: Float + Send + Sync>(
   ctx: &Context,
   r: &mut [NumT],
@@ -91,7 +91,7 @@ pub fn ta_fw_split<NumT: Float + Send + Sync>(
 
 /// Backward split and dividend adjustment
 ///
-/// Adjusts prices backward (from latest to earliest event) using a loop for precise calculation.
+/// Adjusts prices backward (from latest to earliest event) using a loop according to arithmetic progression.
 pub fn ta_bw_split<NumT: Float + Send + Sync>(
   ctx: &Context,
   r: &mut [NumT],
@@ -166,6 +166,216 @@ pub fn ta_bw_split<NumT: Float + Send + Sync>(
             }
           }
         }
+      }
+    });
+
+  Ok(())
+}
+
+/// Forward split factor calculation
+///
+/// Calculates forward split factor array according to geometric progression.
+pub fn ta_fw_split_factor<NumT: Float + Send + Sync>(
+  ctx: &Context,
+  r: &mut [NumT],
+  price: &[NumT],
+  dividend: &[NumT],
+  transfer_shares: &[NumT],
+  right_shares: &[NumT],
+  right_price: &[NumT],
+) -> Result<(), Error> {
+  if r.len() != price.len()
+    || r.len() != dividend.len()
+    || r.len() != transfer_shares.len()
+    || r.len() != right_shares.len()
+    || r.len() != right_price.len()
+  {
+    return Err(Error::LengthMismatch(r.len(), price.len()));
+  }
+
+  if r.is_empty() {
+    return Ok(());
+  }
+
+  let groups = ctx.groups();
+  let group_size = ctx.chunk_size(r.len());
+  if r.len() != group_size * groups {
+    return Err(Error::LengthMismatch(r.len(), group_size * groups));
+  }
+
+  r.par_chunks_mut(group_size)
+    .zip(price.par_chunks(group_size))
+    .zip(dividend.par_chunks(group_size))
+    .zip(transfer_shares.par_chunks(group_size))
+    .zip(right_shares.par_chunks(group_size))
+    .zip(right_price.par_chunks(group_size))
+    .for_each(|(((((r, p), div), ts), rs), rp)| {
+      let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
+      r.fill(NumT::nan());
+
+      if start >= end {
+        return;
+      }
+
+      let mut cum_factor = NumT::one();
+
+      for j in (start..end).rev() {
+        r[j] = cum_factor;
+
+        if j > start {
+          let t = j;
+          let d = if is_normal(&div[t]) {
+            div[t]
+          } else {
+            NumT::zero()
+          };
+          let ts_val = if is_normal(&ts[t]) {
+            ts[t]
+          } else {
+            NumT::zero()
+          };
+          let rs_val = if is_normal(&rs[t]) {
+            rs[t]
+          } else {
+            NumT::zero()
+          };
+          let rp_val = if is_normal(&rp[t]) {
+            rp[t]
+          } else {
+            NumT::zero()
+          };
+
+          if d != NumT::zero() || ts_val != NumT::zero() || rs_val != NumT::zero() {
+            let mut p_prev = NumT::nan();
+            for k in (start..t).rev() {
+              if is_normal(&p[k]) && p[k] > NumT::zero() {
+                p_prev = p[k];
+                break;
+              }
+            }
+
+            let denom = NumT::one() + ts_val + rs_val;
+            let f_t = if is_normal(&p_prev) && p_prev > NumT::zero() {
+              let num = p_prev - d + rs_val * rp_val;
+              if num > NumT::zero() && denom > NumT::zero() {
+                num / (p_prev * denom)
+              } else {
+                NumT::one() / denom
+              }
+            } else {
+              NumT::one() / denom
+            };
+
+            if is_normal(&f_t) && f_t > NumT::zero() {
+              cum_factor = cum_factor * f_t;
+            }
+          }
+        }
+      }
+    });
+
+  Ok(())
+}
+
+/// Backward split factor calculation
+///
+/// Calculates backward split factor array according to geometric progression.
+pub fn ta_bw_split_factor<NumT: Float + Send + Sync>(
+  ctx: &Context,
+  r: &mut [NumT],
+  price: &[NumT],
+  dividend: &[NumT],
+  transfer_shares: &[NumT],
+  right_shares: &[NumT],
+  right_price: &[NumT],
+) -> Result<(), Error> {
+  if r.len() != price.len()
+    || r.len() != dividend.len()
+    || r.len() != transfer_shares.len()
+    || r.len() != right_shares.len()
+    || r.len() != right_price.len()
+  {
+    return Err(Error::LengthMismatch(r.len(), price.len()));
+  }
+
+  if r.is_empty() {
+    return Ok(());
+  }
+
+  let groups = ctx.groups();
+  let group_size = ctx.chunk_size(r.len());
+  if r.len() != group_size * groups {
+    return Err(Error::LengthMismatch(r.len(), group_size * groups));
+  }
+
+  r.par_chunks_mut(group_size)
+    .zip(price.par_chunks(group_size))
+    .zip(dividend.par_chunks(group_size))
+    .zip(transfer_shares.par_chunks(group_size))
+    .zip(right_shares.par_chunks(group_size))
+    .zip(right_price.par_chunks(group_size))
+    .for_each(|(((((r, p), div), ts), rs), rp)| {
+      let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
+      r.fill(NumT::nan());
+
+      if start >= end {
+        return;
+      }
+
+      let mut cum_factor = NumT::one();
+      r[start] = cum_factor;
+
+      for t in start + 1..end {
+        let d = if is_normal(&div[t]) {
+          div[t]
+        } else {
+          NumT::zero()
+        };
+        let ts_val = if is_normal(&ts[t]) {
+          ts[t]
+        } else {
+          NumT::zero()
+        };
+        let rs_val = if is_normal(&rs[t]) {
+          rs[t]
+        } else {
+          NumT::zero()
+        };
+        let rp_val = if is_normal(&rp[t]) {
+          rp[t]
+        } else {
+          NumT::zero()
+        };
+
+        if d != NumT::zero() || ts_val != NumT::zero() || rs_val != NumT::zero() {
+          let mut p_prev = NumT::nan();
+          for k in (start..t).rev() {
+            if is_normal(&p[k]) && p[k] > NumT::zero() {
+              p_prev = p[k];
+              break;
+            }
+          }
+
+          let denom = NumT::one() + ts_val + rs_val;
+          let f_t = if is_normal(&p_prev) && p_prev > NumT::zero() {
+            let num = p_prev - d + rs_val * rp_val;
+            if num > NumT::zero() && denom > NumT::zero() {
+              num / (p_prev * denom)
+            } else {
+              NumT::one() / denom
+            }
+          } else {
+            NumT::one() / denom
+          };
+
+          if is_normal(&f_t) && f_t > NumT::zero() {
+            cum_factor = cum_factor / f_t;
+          }
+        }
+
+        r[t] = cum_factor;
       }
     });
 
@@ -295,4 +505,61 @@ mod tests {
     .unwrap();
     assert_vec_eq_nan(&r, &vec![4.0, f64::NAN, 10.0]);
   }
+
+  #[test]
+  fn test_ta_fw_split_factor() {
+    let price = vec![10.0, 10.0, 10.0];
+    let dividend = vec![0.0, 0.0, 1.0];
+    let transfer_shares = vec![0.0, 1.0, 0.0];
+    let right_shares = vec![0.0; 3];
+    let right_price = vec![0.0; 3];
+
+    let mut r = vec![0.0; 3];
+    let ctx = Context::default();
+
+    ta_fw_split_factor(
+      &ctx,
+      &mut r,
+      &price,
+      &dividend,
+      &transfer_shares,
+      &right_shares,
+      &right_price,
+    )
+    .unwrap();
+
+    // t=2: D_2=1.0, P_prev=10.0 -> f_2 = 9.0/10.0 = 0.9
+    // t=1: T_1=1.0, P_prev=10.0 -> f_1 = 10.0/20.0 = 0.5
+    // Factors: [0.45, 0.9, 1.0]
+    assert_vec_eq_nan(&r, &vec![0.45, 0.9, 1.0]);
+  }
+
+  #[test]
+  fn test_ta_bw_split_factor() {
+    let price = vec![10.0, 10.0, 10.0];
+    let dividend = vec![0.0, 0.0, 1.0];
+    let transfer_shares = vec![0.0, 1.0, 0.0];
+    let right_shares = vec![0.0; 3];
+    let right_price = vec![0.0; 3];
+
+    let mut r = vec![0.0; 3];
+    let ctx = Context::default();
+
+    ta_bw_split_factor(
+      &ctx,
+      &mut r,
+      &price,
+      &dividend,
+      &transfer_shares,
+      &right_shares,
+      &right_price,
+    )
+    .unwrap();
+
+    // t=1: T_1=1.0 -> f_1 = 0.5 -> cum = 1.0 / 0.5 = 2.0
+    // t=2: D_2=1.0 -> f_2 = 0.9 -> cum = 2.0 / 0.9 = 2.222222...
+    // Factors: [1.0, 2.0, 20.0 / 9.0]
+    assert_vec_eq_nan(&r, &vec![1.0, 2.0, 20.0 / 9.0]);
+  }
 }
+

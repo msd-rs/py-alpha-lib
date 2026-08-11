@@ -156,7 +156,7 @@ def BW_SPLIT[A: np.ndarray | list[np.ndarray]](
   """
   Backward split and dividend adjustment
   
-  Adjusts prices backward (from latest to earliest event) using a loop for precise calculation.
+  Adjusts prices backward (from latest to earliest event) using a loop according to arithmetic progression.
   """
   if isinstance(price, list) and isinstance(dividend, list) and isinstance(transfer_shares, list) and isinstance(right_shares, list) and isinstance(right_price, list):
     price = [_to_f64(x) for x in price]
@@ -175,6 +175,33 @@ def BW_SPLIT[A: np.ndarray | list[np.ndarray]](
     right_price = _to_f64(right_price)
     r = np.empty_like(price)
     _algo.bw_split(r, price, dividend, transfer_shares, right_shares, right_price)
+    return r
+
+def BW_SPLIT_FACTOR[A: np.ndarray | list[np.ndarray]](
+  price: A, dividend: A, transfer_shares: A, right_shares: A, right_price: A
+) -> A:
+  """
+  Backward split factor calculation
+  
+  Calculates backward split factor array according to geometric progression.
+  """
+  if isinstance(price, list) and isinstance(dividend, list) and isinstance(transfer_shares, list) and isinstance(right_shares, list) and isinstance(right_price, list):
+    price = [_to_f64(x) for x in price]
+    dividend = [_to_f64(x) for x in dividend]
+    transfer_shares = [_to_f64(x) for x in transfer_shares]
+    right_shares = [_to_f64(x) for x in right_shares]
+    right_price = [_to_f64(x) for x in right_price]
+    r = [np.empty_like(x) for x in price]
+    _algo.bw_split_factor(r, price, dividend, transfer_shares, right_shares, right_price)
+    return r
+  else:
+    price = _to_f64(price)
+    dividend = _to_f64(dividend)
+    transfer_shares = _to_f64(transfer_shares)
+    right_shares = _to_f64(right_shares)
+    right_price = _to_f64(right_price)
+    r = np.empty_like(price)
+    _algo.bw_split_factor(r, price, dividend, transfer_shares, right_shares, right_price)
     return r
 
 def CC_RANK[A: np.ndarray | list[np.ndarray]](
@@ -472,7 +499,7 @@ def FW_SPLIT[A: np.ndarray | list[np.ndarray]](
   """
   Forward split and dividend adjustment
   
-  Adjusts prices forward (from earliest to latest event) using a loop for precise calculation.
+  Adjusts prices forward (from earliest to latest event) using a loop according to arithmetic progression.
   """
   if isinstance(price, list) and isinstance(dividend, list) and isinstance(transfer_shares, list) and isinstance(right_shares, list) and isinstance(right_price, list):
     price = [_to_f64(x) for x in price]
@@ -491,6 +518,33 @@ def FW_SPLIT[A: np.ndarray | list[np.ndarray]](
     right_price = _to_f64(right_price)
     r = np.empty_like(price)
     _algo.fw_split(r, price, dividend, transfer_shares, right_shares, right_price)
+    return r
+
+def FW_SPLIT_FACTOR[A: np.ndarray | list[np.ndarray]](
+  price: A, dividend: A, transfer_shares: A, right_shares: A, right_price: A
+) -> A:
+  """
+  Forward split factor calculation
+  
+  Calculates forward split factor array according to geometric progression.
+  """
+  if isinstance(price, list) and isinstance(dividend, list) and isinstance(transfer_shares, list) and isinstance(right_shares, list) and isinstance(right_price, list):
+    price = [_to_f64(x) for x in price]
+    dividend = [_to_f64(x) for x in dividend]
+    transfer_shares = [_to_f64(x) for x in transfer_shares]
+    right_shares = [_to_f64(x) for x in right_shares]
+    right_price = [_to_f64(x) for x in right_price]
+    r = [np.empty_like(x) for x in price]
+    _algo.fw_split_factor(r, price, dividend, transfer_shares, right_shares, right_price)
+    return r
+  else:
+    price = _to_f64(price)
+    dividend = _to_f64(dividend)
+    transfer_shares = _to_f64(transfer_shares)
+    right_shares = _to_f64(right_shares)
+    right_price = _to_f64(right_price)
+    r = np.empty_like(price)
+    _algo.fw_split_factor(r, price, dividend, transfer_shares, right_shares, right_price)
     return r
 
 def GROUP_RANK[A: np.ndarray | list[np.ndarray]](

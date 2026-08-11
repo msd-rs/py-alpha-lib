@@ -80,4 +80,27 @@ const lines = toMLangLine(execute(code, toNamedArray(kline), toNamedValues(param
 
 Because the `JSLine` is on wasm memory, so convert it into a more convenient form for use in the JavaScript environment.
 
+## Additional Utilities
+
+### `join_asof`
+Aligns series values `v2` (with dates `d2`) to target dates `d1`.
+- `method`: `0` (zero fill), `1` (nan fill), `2` (forward fill / ffill), `-2` (backward fill / bfill)
+
+```typescript
+import { join_asof } from 'js-alpha-lib'
+
+const alignedV2 = join_asof(d1, d2, v2, method)
+```
+
+### `apply_split`
+Performs price split adjustments or split factor calculations.
+- `method`: `1` (forward split), `2` (forward split factor), `-1` (backward split), `-2` (backward split factor)
+- Note: `dividend`, `transfer_shares`, `right_shares`, and `right_price` must have the same length as `price` (align them with `join_asof(price_dates, event_dates, values, 0)` first if needed).
+
+```typescript
+import { apply_split } from 'js-alpha-lib'
+
+const result = apply_split(method, price, dividend, transfer_shares, right_shares, right_price)
+```
+
 

@@ -1026,6 +1026,33 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
     )?;
     Ok(MValue::NumArray(NumArray::from(r)))
   });
+  rt.register_func("BW_SPLIT_FACTOR", |ctx, args, _lines| {
+    if args.len() != 5 { return Err(anyhow!("BW_SPLIT_FACTOR expects 5 arguments")); }
+    let default_len = match (&args[0], &args[1], &args[2], &args[3], &args[4]) {
+      (MValue::NumArray(a), _, _, _, _) => a.len(),
+      (_, MValue::NumArray(b), _, _, _) => b.len(),
+      (_, _, MValue::NumArray(c), _, _) => c.len(),
+      (_, _, _, MValue::NumArray(d), _) => d.len(),
+      (_, _, _, _, MValue::NumArray(e)) => e.len(),
+      _ => 1,
+    };
+    let price = args[0].to_num_array(default_len)?;
+    let dividend = args[1].to_num_array(default_len)?;
+    let transfer_shares = args[2].to_num_array(default_len)?;
+    let right_shares = args[3].to_num_array(default_len)?;
+    let right_price = args[4].to_num_array(default_len)?;
+    let mut r = vec![0.0; price.len()];
+    ta_bw_split_factor::<f64>(
+      ctx,
+      &mut r,
+      &price,
+      &dividend,
+      &transfer_shares,
+      &right_shares,
+      &right_price,
+    )?;
+    Ok(MValue::NumArray(NumArray::from(r)))
+  });
   reg_ta_1_arr!(rt, CC_RANK, ta_cc_rank);
   reg_ta_1_arr!(rt, CC_ZSCORE, ta_cc_zscore);
   reg_ta_1_arr_1_usize!(rt, CORR, ta_corr);
@@ -1055,6 +1082,33 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
     let right_price = args[4].to_num_array(default_len)?;
     let mut r = vec![0.0; price.len()];
     ta_fw_split::<f64>(
+      ctx,
+      &mut r,
+      &price,
+      &dividend,
+      &transfer_shares,
+      &right_shares,
+      &right_price,
+    )?;
+    Ok(MValue::NumArray(NumArray::from(r)))
+  });
+  rt.register_func("FW_SPLIT_FACTOR", |ctx, args, _lines| {
+    if args.len() != 5 { return Err(anyhow!("FW_SPLIT_FACTOR expects 5 arguments")); }
+    let default_len = match (&args[0], &args[1], &args[2], &args[3], &args[4]) {
+      (MValue::NumArray(a), _, _, _, _) => a.len(),
+      (_, MValue::NumArray(b), _, _, _) => b.len(),
+      (_, _, MValue::NumArray(c), _, _) => c.len(),
+      (_, _, _, MValue::NumArray(d), _) => d.len(),
+      (_, _, _, _, MValue::NumArray(e)) => e.len(),
+      _ => 1,
+    };
+    let price = args[0].to_num_array(default_len)?;
+    let dividend = args[1].to_num_array(default_len)?;
+    let transfer_shares = args[2].to_num_array(default_len)?;
+    let right_shares = args[3].to_num_array(default_len)?;
+    let right_price = args[4].to_num_array(default_len)?;
+    let mut r = vec![0.0; price.len()];
+    ta_fw_split_factor::<f64>(
       ctx,
       &mut r,
       &price,

@@ -163,6 +163,8 @@ Naming Rules:
 | BARSSINCE | Calculate number of bars since first condition true |
 | BETA | Rolling Beta coefficient of asset returns against benchmark returns. |
 | BINS | Discretize the input into n bins, the ctx.groups() is the number of groups |
+| BW_SPLIT | Backward split and dividend adjustment |
+| BW_SPLIT_FACTOR | Backward split factor calculation |
 | CC_RANK | Calculate rank percentage cross group dimension, the ctx.groups() is the number of groups Same value are averaged |
 | CC_ZSCORE | Calculate cross-sectional Z-Score across groups at each time step |
 | CORR | Time Series Correlation in moving window on self |
@@ -175,6 +177,8 @@ Naming Rules:
 | EMA | Exponential Moving Average (variant of well-known EMA) weight = 2 / (n + 1) |
 | ENTROPY | Calculate rolling Shannon entropy over a moving window |
 | FRET | Future Return |
+| FW_SPLIT | Forward split and dividend adjustment |
+| FW_SPLIT_FACTOR | Forward split factor calculation |
 | GROUP_RANK | Calculate rank percentage within each category group at each time step |
 | GROUP_ZSCORE | Calculate Z-Score within each category group at each time step |
 | HHV | Find highest value in a preceding `periods` window |
