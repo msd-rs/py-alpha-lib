@@ -21,17 +21,14 @@ impl<NumT: Float> OrderedFloat<NumT> {
 
 impl<NumT: Float> Ord for OrderedFloat<NumT> {
   fn cmp(&self, other: &Self) -> Ordering {
-    match self.value.partial_cmp(&other.value) {
-      Some(ord) => ord,
-      None => {
-        if self.value.is_finite() {
-          return Ordering::Greater;
-        }
-        if self.value.is_infinite() {
-          return Ordering::Less;
-        }
-        return Ordering::Less;
-      }
+    match (self.value.is_nan(), other.value.is_nan()) {
+      (true, true) => Ordering::Equal,
+      (true, false) => Ordering::Less,
+      (false, true) => Ordering::Greater,
+      (false, false) => self
+        .value
+        .partial_cmp(&other.value)
+        .unwrap_or(Ordering::Less),
     }
   }
 }
@@ -62,7 +59,6 @@ pub fn ta_rank<NumT: Float + Send + Sync>(
   if r.len() != input.len() {
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
-
 
   if periods == 1 {
     r.fill(NumT::from(1.0).unwrap());
@@ -165,7 +161,6 @@ pub fn ta_cc_rank<NumT: Float + Send + Sync + Debug>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-
   let group_size = ctx.chunk_size(r.len()) as usize;
   let groups = ctx.groups() as usize;
 
@@ -177,7 +172,6 @@ pub fn ta_cc_rank<NumT: Float + Send + Sync + Debug>(
     // ensure data is complete
     return Err(Error::LengthMismatch(r.len(), group_size * groups));
   }
-
 
   let r = UnsafePtr::new(r.as_mut_ptr(), r.len());
   (0..group_size).into_par_iter().for_each(|j| {
@@ -251,14 +245,12 @@ pub fn ta_bins<NumT: Float + Send + Sync + Debug>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-
   let group_size = ctx.chunk_size(r.len()) as usize;
   let groups = ctx.groups() as usize;
 
   if r.len() != group_size * groups {
     return Err(Error::LengthMismatch(r.len(), group_size * groups));
   }
-
 
   // If bins is 0 or 1, everything is bin 0 (or error?)
   // If bins=1, all 0.
@@ -505,5 +497,47 @@ mod tests {
         2.0 / 2.0,
       ],
     );
+  }
+
+  #[test]
+  fn test_ta_rank_with_nan_inf() {
+    let mut a = vec![
+      OrderedFloat::new(f64::NAN),
+      OrderedFloat::new(f64::INFINITY),
+      OrderedFloat::new(f64::NEG_INFINITY),
+      OrderedFloat::new(f64::NAN),
+      OrderedFloat::new(f64::INFINITY),
+      OrderedFloat::new(f64::NEG_INFINITY),
+      OrderedFloat::new(f64::NAN),
+      OrderedFloat::new(f64::NAN),
+    ];
+
+    println!("{:?}", a);
+    a.sort_unstable();
+    println!("{:?}", a);
+    a.sort();
+    println!("{:?}", a);
+  }
+
+  #[test]
+  fn test_float_order() {
+    let mut v = vec![
+      f64::NAN,
+      1.0,
+      f64::NAN,
+      f64::NEG_INFINITY,
+      f64::INFINITY,
+      0.0,
+      -1.0,
+      f64::MAX,
+      f64::MIN,
+    ]
+    .into_iter()
+    .map(OrderedFloat::from)
+    .collect::<Vec<_>>();
+
+    v.sort_by(OrderedFloat::cmp);
+
+    println!("{:?}", v);
   }
 }

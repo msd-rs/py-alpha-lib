@@ -12,5 +12,8 @@ df = pd.DataFrame(
 
 
 alpha.set_ctx(groups=5)
-print(alpha.RANK(df["Number_legs"].to_numpy().astype(np.float64)))
+print(alpha.RANK(df["Number_legs"].to_numpy().astype(np.float64), 1))
 print(df["Number_legs"].rank(pct=True).to_numpy().astype(np.float64))
+
+alpha.set_ctx(groups=3)
+print(alpha.CC_RANK(np.array([3.0, np.nan, 1.0, np.inf, 4.0, -np.inf])))
