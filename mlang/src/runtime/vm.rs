@@ -1115,6 +1115,7 @@ macro_rules! reg_ta_1_arr_2_usize_sma {
 pub fn register_ta_functions(rt: &mut MRuntime) {
   use alpha_algo::*;
 
+  reg_ta_1_arr!(rt, ABS, ta_abs);
   reg_ta_2_arr_1_usize!(rt, ALPHA, ta_alpha);
   reg_ta_1_arr!(rt, BACKFILL, ta_backfill);
   reg_ta_1_bool_arr!(rt, BARSLAST, ta_barslast);
@@ -1260,7 +1261,9 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
   reg_ta_2_arr_1_usize_to_bool!(rt, LONGCROSS, ta_longcross);
   reg_ta_1_arr_1_usize!(rt, LWMA, ta_lwma);
   reg_ta_1_arr_1_usize!(rt, MA, ta_ma);
+  reg_ta_2_arr!(rt, MAX, ta_max);
   reg_ta_1_arr_1_usize!(rt, MAX_DRAWDOWN, ta_max_drawdown);
+  reg_ta_2_arr!(rt, MIN, ta_min);
   reg_ta_1_arr_1_usize!(rt, MIN_MAX_DIFF, ta_min_max_diff);
   reg_ta_1_arr_2_usize!(rt, MOMENT, ta_moment);
   reg_ta_2_arr!(rt, NEUTRALIZE, ta_neutralize);
@@ -1315,6 +1318,43 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
   reg_ta_1_arr_1_bool_arr_1_usize!(rt, SUMIF, ta_sumif);
   reg_ta_1_arr_1_usize!(rt, VAR, ta_var);
   reg_ta_1_arr_1_usize!(rt, WEIGHTED_DELAY, ta_weighted_delay);
+
+  rt.register_func("WHERE", |ctx, args, _lines| {
+    if args.len() != 3 {
+      return Err(anyhow!("WHERE expects 3 arguments"));
+    }
+    let default_len = match (&args[0], &args[1], &args[2]) {
+      (MValue::BoolArray(c), _, _) => c.len(),
+      (_, MValue::NumArray(a), _) => a.len(),
+      (_, _, MValue::NumArray(b)) => b.len(),
+      _ => 1,
+    };
+    let cond = args[0].to_bool_array(default_len)?;
+    let a = args[1].to_num_array(default_len)?;
+    let b = args[2].to_num_array(default_len)?;
+    let mut r = vec![0.0; cond.len()];
+    ta_where::<f64>(ctx, &mut r, &cond, &a, &b)?;
+    Ok(MValue::NumArray(NumArray::from(r)))
+  });
+
+  rt.register_func("IF", |ctx, args, _lines| {
+    if args.len() != 3 {
+      return Err(anyhow!("IF expects 3 arguments"));
+    }
+    let default_len = match (&args[0], &args[1], &args[2]) {
+      (MValue::BoolArray(c), _, _) => c.len(),
+      (_, MValue::NumArray(a), _) => a.len(),
+      (_, _, MValue::NumArray(b)) => b.len(),
+      _ => 1,
+    };
+    let cond = args[0].to_bool_array(default_len)?;
+    let a = args[1].to_num_array(default_len)?;
+    let b = args[2].to_num_array(default_len)?;
+    let mut r = vec![0.0; cond.len()];
+    ta_where::<f64>(ctx, &mut r, &cond, &a, &b)?;
+    Ok(MValue::NumArray(NumArray::from(r)))
+  });
+
   reg_ta_1_arr_1_usize!(rt, ZSCORE, ta_zscore);
 
   rt.register_func("DRAWICON", |_ctx, args, lines| {

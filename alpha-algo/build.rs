@@ -226,7 +226,7 @@ fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
       func.doc.lines().next().unwrap_or("").trim()
     )?;
     writeln!(code, "  #[pyfunction]")?;
-    if py_func_name == "ref" {
+    if py_func_name == "ref" || py_func_name == "where" {
       writeln!(code, "  fn r#{}<'py>(", py_func_name)?;
     } else {
       writeln!(code, "  fn {}<'py>(", py_func_name)?;
@@ -426,6 +426,11 @@ fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
       let b_name = arrays[2].0;
       let c_name = arrays[3].0;
 
+      let r_is_bool = matches!(arrays[0].1, TaType::BoolArray(_));
+      let a_is_bool = matches!(arrays[1].1, TaType::BoolArray(_));
+      let b_is_bool = matches!(arrays[2].1, TaType::BoolArray(_));
+      let c_is_bool = matches!(arrays[3].1, TaType::BoolArray(_));
+
       let gen_args = |type_name: &str| -> String {
         let mut args = String::new();
         for param in &func.params {
@@ -449,6 +454,267 @@ fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
 
       let args_f64 = gen_args("f64");
       let args_f32 = gen_args("f32");
+
+      if !r_is_bool && a_is_bool && !b_is_bool && !c_is_bool {
+        // WHERE case: r=num, a=bool, b=num, c=num
+        // f64
+        writeln!(
+          code,
+          "    if let Some((((mut {}, {}), {}), {})) = {}",
+          r_name, a_name, b_name, c_name, r_name
+        )?;
+        writeln!(code, "      .extract::<PyReadwriteArray1<'py, f64>>().ok()")?;
+        writeln!(
+          code,
+          "      .zip({}.extract::<PyReadonlyArray1<'py, bool>>().ok())",
+          a_name
+        )?;
+        writeln!(
+          code,
+          "      .zip({}.extract::<PyReadonlyArray1<'py, f64>>().ok())",
+          b_name
+        )?;
+        writeln!(
+          code,
+          "      .zip({}.extract::<PyReadonlyArray1<'py, f64>>().ok()) {{",
+          c_name
+        )?;
+
+        writeln!(
+          code,
+          "      let mut {} = {}.as_array_mut();",
+          r_name, r_name
+        )?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice_mut().ok_or(PyValueError::new_err(\"failed to get mutable slice\"))?;",
+          r_name, r_name
+        )?;
+
+        writeln!(code, "      let {} = {}.as_array();", a_name, a_name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          a_name, a_name
+        )?;
+        writeln!(code, "      let {} = {}.as_array();", b_name, b_name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          b_name, b_name
+        )?;
+        writeln!(code, "      let {} = {}.as_array();", c_name, c_name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          c_name, c_name
+        )?;
+
+        writeln!(
+          code,
+          "      {}(&ctx, {}, {}, {}, {}{}).map_err(|e| e.into())",
+          rust_func_name, r_name, a_name, b_name, c_name, args_f64
+        )?;
+
+        // f32
+        writeln!(
+          code,
+          "    }} else if let Some((((mut {}, {}), {}), {})) = {}",
+          r_name, a_name, b_name, c_name, r_name
+        )?;
+        writeln!(code, "      .extract::<PyReadwriteArray1<'py, f32>>().ok()")?;
+        writeln!(
+          code,
+          "      .zip({}.extract::<PyReadonlyArray1<'py, bool>>().ok())",
+          a_name
+        )?;
+        writeln!(
+          code,
+          "      .zip({}.extract::<PyReadonlyArray1<'py, f32>>().ok())",
+          b_name
+        )?;
+        writeln!(
+          code,
+          "      .zip({}.extract::<PyReadonlyArray1<'py, f32>>().ok()) {{",
+          c_name
+        )?;
+
+        writeln!(
+          code,
+          "      let mut {} = {}.as_array_mut();",
+          r_name, r_name
+        )?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice_mut().ok_or(PyValueError::new_err(\"failed to get mutable slice\"))?;",
+          r_name, r_name
+        )?;
+
+        writeln!(code, "      let {} = {}.as_array();", a_name, a_name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          a_name, a_name
+        )?;
+        writeln!(code, "      let {} = {}.as_array();", b_name, b_name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          b_name, b_name
+        )?;
+        writeln!(code, "      let {} = {}.as_array();", c_name, c_name)?;
+        writeln!(
+          code,
+          "      let {} = {}.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;",
+          c_name, c_name
+        )?;
+
+        writeln!(
+          code,
+          "      {}(&ctx, {}, {}, {}, {}{}).map_err(|e| e.into())",
+          rust_func_name, r_name, a_name, b_name, c_name, args_f32
+        )?;
+
+        // List support for (r: NumArray, a: BoolArray, b: NumArray, c: NumArray)
+        writeln!(
+          code,
+          "    }} else if let Some(((({}, {}), {}), {})) = {}.cast::<PyList>().ok().zip({}.cast::<PyList>().ok()).zip({}.cast::<PyList>().ok()).zip({}.cast::<PyList>().ok()) {{",
+          r_name, a_name, b_name, c_name, r_name, a_name, b_name, c_name
+        )?;
+        writeln!(
+          code,
+          "      if {}.len() != {}.len() || {}.len() != {}.len() || {}.len() != {}.len() {{ return Err(PyValueError::new_err(\"length mismatch\")); }}",
+          r_name, a_name, r_name, b_name, r_name, c_name
+        )?;
+
+        // List f64
+        writeln!(
+          code,
+          "      if let Some(((mut {}, {}), {})) = {}",
+          r_name, b_name, c_name, r_name
+        )?;
+        writeln!(
+          code,
+          "        .extract::<Vec<PyReadwriteArray1<'py, f64>>>().ok()"
+        )?;
+        writeln!(
+          code,
+          "        .zip({}.extract::<Vec<PyReadonlyArray1<'py, f64>>>().ok())",
+          b_name
+        )?;
+        writeln!(
+          code,
+          "        .zip({}.extract::<Vec<PyReadonlyArray1<'py, f64>>>().ok()) {{",
+          c_name
+        )?;
+        writeln!(
+          code,
+          "        let {} = {}.extract::<Vec<PyReadonlyArray1<'py, bool>>>()?;",
+          a_name, a_name
+        )?;
+        writeln!(code, "        ctx._groups = {}.len() as u32;", r_name)?;
+        writeln!(code, "        for i in 0..{}.len() {{", r_name)?;
+        writeln!(
+          code,
+          "          let mut r_arr = {}[i].as_array_mut();",
+          r_name
+        )?;
+        writeln!(
+          code,
+          "          let r_slice = r_arr.as_slice_mut().ok_or(PyValueError::new_err(\"failed to get mutable slice\"))?;"
+        )?;
+        writeln!(code, "          let a_arr = {}[i].as_array();", a_name)?;
+        writeln!(
+          code,
+          "          let a_slice = a_arr.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;"
+        )?;
+        writeln!(code, "          let b_arr = {}[i].as_array();", b_name)?;
+        writeln!(
+          code,
+          "          let b_slice = b_arr.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;"
+        )?;
+        writeln!(code, "          let c_arr = {}[i].as_array();", c_name)?;
+        writeln!(
+          code,
+          "          let c_slice = c_arr.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;"
+        )?;
+        writeln!(
+          code,
+          "          {}(&ctx, r_slice, a_slice, b_slice, c_slice{}).map_err(|e| PyErr::from(e))?;",
+          rust_func_name, args_f64
+        )?;
+        writeln!(code, "        }}")?;
+        writeln!(code, "        Ok(())")?;
+
+        // List f32
+        writeln!(
+          code,
+          "      }} else if let Some(((mut {}, {}), {})) = {}",
+          r_name, b_name, c_name, r_name
+        )?;
+        writeln!(
+          code,
+          "        .extract::<Vec<PyReadwriteArray1<'py, f32>>>().ok()"
+        )?;
+        writeln!(
+          code,
+          "        .zip({}.extract::<Vec<PyReadonlyArray1<'py, f32>>>().ok())",
+          b_name
+        )?;
+        writeln!(
+          code,
+          "        .zip({}.extract::<Vec<PyReadonlyArray1<'py, f32>>>().ok()) {{",
+          c_name
+        )?;
+        writeln!(
+          code,
+          "        let {} = {}.extract::<Vec<PyReadonlyArray1<'py, bool>>>()?;",
+          a_name, a_name
+        )?;
+        writeln!(code, "        ctx._groups = {}.len() as u32;", r_name)?;
+        writeln!(code, "        for i in 0..{}.len() {{", r_name)?;
+        writeln!(
+          code,
+          "          let mut r_arr = {}[i].as_array_mut();",
+          r_name
+        )?;
+        writeln!(
+          code,
+          "          let r_slice = r_arr.as_slice_mut().ok_or(PyValueError::new_err(\"failed to get mutable slice\"))?;"
+        )?;
+        writeln!(code, "          let a_arr = {}[i].as_array();", a_name)?;
+        writeln!(
+          code,
+          "          let a_slice = a_arr.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;"
+        )?;
+        writeln!(code, "          let b_arr = {}[i].as_array();", b_name)?;
+        writeln!(
+          code,
+          "          let b_slice = b_arr.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;"
+        )?;
+        writeln!(code, "          let c_arr = {}[i].as_array();", c_name)?;
+        writeln!(
+          code,
+          "          let c_slice = c_arr.as_slice().ok_or(PyValueError::new_err(\"failed to get slice\"))?;"
+        )?;
+        writeln!(
+          code,
+          "          {}(&ctx, r_slice, a_slice, b_slice, c_slice{}).map_err(|e| PyErr::from(e))?;",
+          rust_func_name, args_f32
+        )?;
+        writeln!(code, "        }}")?;
+        writeln!(code, "        Ok(())")?;
+        writeln!(
+          code,
+          "      }} else {{ Err(PyValueError::new_err(\"invalid list input (expected float, bool, float, float)\")) }}"
+        )?;
+        writeln!(
+          code,
+          "    }} else {{ Err(PyValueError::new_err(\"invalid input (expected float, bool, float, float)\")) }}"
+        )?;
+        writeln!(code, "  }}")?;
+        continue;
+      }
 
       writeln!(
         code,
@@ -2092,7 +2358,7 @@ fn build_py_bindings(functions: &[TaFunc]) -> Result<()> {
     "pub fn register_functions(m: &Bound<'_, PyModule>) -> PyResult<()> {{"
   )?;
   for func in functions {
-    if func.name == "ref" {
+    if func.name == "ref" || func.name == "where" {
       writeln!(
         code,
         "  m.add_function(wrap_pyfunction!(r#{}, m)?)?;",
@@ -2311,6 +2577,9 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
       let b_name = arrays[2].0;
       let c_name = arrays[3].0;
 
+      let r_is_bool = matches!(arrays[0].1, TaType::BoolArray(_));
+      let a_is_bool = matches!(arrays[1].1, TaType::BoolArray(_));
+
       let mut py_params = vec![
         format!("{}: A", a_name),
         format!("{}: A", b_name),
@@ -2363,10 +2632,14 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
       ] {
         writeln!(file, "    {} = {}", name, py_convert_list(ty, name))?;
       }
+
+      let first_num_name = if a_is_bool { b_name } else { a_name };
+      let dtype = if r_is_bool { ", dtype=bool" } else { "" };
+
       writeln!(
         file,
-        "    {} = [np.empty_like(x) for x in {}]",
-        r_name, a_name
+        "    {} = [np.empty_like(x{}) for x in {}]",
+        r_name, dtype, first_num_name
       )?;
 
       writeln!(
@@ -2385,7 +2658,7 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
       ] {
         writeln!(file, "    {} = {}", name, py_convert(ty, name))?;
       }
-      writeln!(file, "    {} = np.empty_like({})", r_name, a_name)?;
+      writeln!(file, "    {} = np.empty_like({}{})", r_name, first_num_name, dtype)?;
 
       writeln!(
         file,

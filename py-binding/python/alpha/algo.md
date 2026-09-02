@@ -2,6 +2,7 @@ List of available functions with python type hints:
 
 the `np.ndarray` is `ndarray` type in `numpy` package
 
+- ABS(input: np.ndarray[float]): Calculate absolute value of input elements  ABS(x) = |x|
 - ALPHA(input: np.ndarray[float], benchmark: np.ndarray[float], periods: int): Rolling Jensen's Alpha of asset returns against benchmark returns.  Alpha = mean(input) - Beta * mean(benchmark) Measures excess return of an asset relative to its expected return given beta.
 - BACKFILL(input: np.ndarray[float]): Forward-fill NaN values with the last valid observation  Iterates forward through each group; if x[i] is NaN, copies the last valid value. Leading NaNs (before any valid value) remain NaN.
 - BARSLAST(input: np.ndarray[bool]): Calculate number of bars since last condition true
@@ -44,7 +45,9 @@ the `np.ndarray` is `ndarray` type in `numpy` package
 - LWMA_V(input: np.ndarray[float], periods: np.ndarray[int]): Linear Weighted Moving Average with variable periods  LWMA = SUM(Price * Weight) / SUM(Weight)
 - MA(input: np.ndarray[float], periods: int): Simple Moving Average, also known as arithmetic moving average
 - MA_V(input: np.ndarray[float], periods: np.ndarray[int]): Simple Moving Average with variable periods
+- MAX(a: np.ndarray[float], b: np.ndarray[float]): Calculate element-wise maximum of two arrays  MAX(a, b) = max(a, b)
 - MAX_DRAWDOWN(input: np.ndarray[float], periods: int): Rolling Maximum Drawdown.  MaxDrawdown = minimum peak-to-trough decline within the rolling window. Result is expressed as a negative return (e.g. -0.2 means 20% drawdown from peak). Input should be a price or equity curve series.
+- MIN(a: np.ndarray[float], b: np.ndarray[float]): Calculate element-wise minimum of two arrays  MIN(a, b) = min(a, b)
 - MIN_MAX_DIFF(input: np.ndarray[float], periods: int): Calculate rolling min-max difference (range) over a moving window  TS_MIN_MAX_DIFF = TS_MAX(x, d) - TS_MIN(x, d) Single-pass using two monotonic deques for efficiency.
 - MOMENT(input: np.ndarray[float], periods: int, k: int): Calculate rolling k-th central moment over a moving window  MOMENT(x, d, k) = mean((x - mean)^k) over window of d periods. This is the raw (non-adjusted) sample moment. k=2 gives variance (population), k=3 gives raw third moment, etc.
 - NEUTRALIZE(category: np.ndarray[float], input: np.ndarray[float]): Neutralize the effect of a categorical variable on a numeric variable
@@ -70,4 +73,5 @@ the `np.ndarray` is `ndarray` type in `numpy` package
 - SUMIF(input: np.ndarray[float], condition: np.ndarray[bool], periods: int): Calculate sum of values in preceding `periods` window where `condition` is true
 - VAR(input: np.ndarray[float], periods: int): Calculate Variance over a moving window  Variance = (SumSq - (Sum^2)/N) / (N - 1)
 - WEIGHTED_DELAY(input: np.ndarray[float], periods: int): Calculate weighted delay (exponentially weighted lag)  WEIGHTED_DELAY(x, k) = (k * x[t-1] + (k-1) * x[t-2] + ... + 1 * x[t-k]) / (k*(k+1)/2) This is essentially LWMA applied to the lagged (shifted by 1) series over k periods.
+- WHERE(condition: np.ndarray[bool], a: np.ndarray[float], b: np.ndarray[float]): Choose elements from a or b depending on condition  WHERE(cond, a, b) = a if cond else b
 - ZSCORE(input: np.ndarray[float], periods: int): Calculate rolling Z-Score over a moving window  Z-Score = (x - mean) / stddev, computed over a rolling window of `periods`. Uses sample stddev (ddof=1) to match pandas.

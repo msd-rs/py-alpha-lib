@@ -422,3 +422,41 @@ fn test_runtime_split_factor() -> Result<()> {
 
   Ok(())
 }
+
+#[test]
+fn test_runtime_abs_max_min_where() -> Result<()> {
+  let code = r#"
+    V_ABS : ABS(A);
+    V_MAX : MAX(A, B);
+    V_MIN : MIN(A, B);
+    V_WHERE : WHERE(A > B, A, B);
+    V_IF : IF(A < B, A, B);
+  "#;
+
+  let mut datas = HashMap::new();
+  datas.insert("A".to_string(), NumArray::from(vec![-5.0, 10.0, -3.0]));
+  datas.insert("B".to_string(), NumArray::from(vec![2.0, 5.0, -1.0]));
+
+  let params = HashMap::new();
+  let mut rt = MRuntime::new(Context::default());
+  let lines = rt.execute(code, &datas, &params)?;
+
+  assert_eq!(lines.len(), 5);
+  assert_eq!(lines[0].name, "v_abs");
+  assert_eq!(lines[0].data, vec![5.0, 10.0, 3.0]);
+
+  assert_eq!(lines[1].name, "v_max");
+  assert_eq!(lines[1].data, vec![2.0, 10.0, -1.0]);
+
+  assert_eq!(lines[2].name, "v_min");
+  assert_eq!(lines[2].data, vec![-5.0, 5.0, -3.0]);
+
+  assert_eq!(lines[3].name, "v_where");
+  assert_eq!(lines[3].data, vec![2.0, 10.0, -1.0]);
+
+  assert_eq!(lines[4].name, "v_if");
+  assert_eq!(lines[4].data, vec![-5.0, 5.0, -3.0]);
+
+  Ok(())
+}
+

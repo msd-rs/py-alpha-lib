@@ -1,5 +1,13 @@
 pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
     lua.globals().set(
+      "ABS",
+      lua.create_function(|lua, (input,): (NumArray,)| {
+        let mut r = vec![0.0; input.len()];
+        ta_abs::<f64>(&ctx(lua), &mut r, &input)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
       "ALPHA",
       lua.create_function(|lua, (input, benchmark, periods): (NumArray, NumArray, usize)| {
         let mut r = vec![0.0; input.len()];
@@ -344,10 +352,26 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       })?,
     )?;
     lua.globals().set(
+      "MAX",
+      lua.create_function(|lua, (a, b): (NumArray, NumArray)| {
+        let mut r = vec![0.0; a.len()];
+        ta_max::<f64>(&ctx(lua), &mut r, &a, &b)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
       "MAX_DRAWDOWN",
       lua.create_function(|lua, (input, periods): (NumArray, usize)| {
         let mut r = vec![0.0; input.len()];
         ta_max_drawdown::<f64>(&ctx(lua), &mut r, &input, periods)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
+      "MIN",
+      lua.create_function(|lua, (a, b): (NumArray, NumArray)| {
+        let mut r = vec![0.0; a.len()];
+        ta_min::<f64>(&ctx(lua), &mut r, &a, &b)?;
         Ok(NumArray::from(r))
       })?,
     )?;
@@ -550,6 +574,14 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       lua.create_function(|lua, (input, periods): (NumArray, usize)| {
         let mut r = vec![0.0; input.len()];
         ta_weighted_delay::<f64>(&ctx(lua), &mut r, &input, periods)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
+      "WHERE",
+      lua.create_function(|lua, (condition, a, b): (BoolArray, NumArray, NumArray)| {
+        let mut r = vec![0.0; condition.len()];
+        ta_where::<f64>(&ctx(lua), &mut r, &condition, &a, &b)?;
         Ok(NumArray::from(r))
       })?,
     )?;

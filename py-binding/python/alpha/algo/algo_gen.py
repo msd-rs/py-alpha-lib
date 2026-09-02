@@ -24,6 +24,25 @@ def _to_usize(a):
     return a
   return a.astype(np.uint64)
 
+def ABS[A: np.ndarray | list[np.ndarray]](
+  input: A
+) -> A:
+  """
+  Calculate absolute value of input elements
+  
+  ABS(x) = |x|
+  """
+  if isinstance(input, list):
+    input = [_to_f64(x) for x in input]
+    r = [np.empty_like(x) for x in input]
+    _algo.abs(r, input)
+    return r
+  else:
+    input = _to_f64(input)
+    r = np.empty_like(input)
+    _algo.abs(r, input)
+    return r
+
 def ALPHA[A: np.ndarray | list[np.ndarray]](
   input: A, benchmark: A, periods: int
 ) -> A:
@@ -893,6 +912,27 @@ def MA_V[A: np.ndarray | list[np.ndarray]](
     _algo.ma_v(r, input, periods)
     return r
 
+def MAX[A: np.ndarray | list[np.ndarray]](
+  a: A, b: A
+) -> A:
+  """
+  Calculate element-wise maximum of two arrays
+  
+  MAX(a, b) = max(a, b)
+  """
+  if isinstance(a, list) and isinstance(b, list):
+    a = [_to_f64(x) for x in a]
+    b = [_to_f64(x) for x in b]
+    r = [np.empty_like(x) for x in a]
+    _algo.max(r, a, b)
+    return r
+  else:
+    a = _to_f64(a)
+    b = _to_f64(b)
+    r = np.empty_like(a)
+    _algo.max(r, a, b)
+    return r
+
 def MAX_DRAWDOWN[A: np.ndarray | list[np.ndarray]](
   input: A, periods: int
 ) -> A:
@@ -914,6 +954,27 @@ def MAX_DRAWDOWN[A: np.ndarray | list[np.ndarray]](
     input = _to_f64(input)
     r = np.empty_like(input)
     _algo.max_drawdown(r, input, periods)
+    return r
+
+def MIN[A: np.ndarray | list[np.ndarray]](
+  a: A, b: A
+) -> A:
+  """
+  Calculate element-wise minimum of two arrays
+  
+  MIN(a, b) = min(a, b)
+  """
+  if isinstance(a, list) and isinstance(b, list):
+    a = [_to_f64(x) for x in a]
+    b = [_to_f64(x) for x in b]
+    r = [np.empty_like(x) for x in a]
+    _algo.min(r, a, b)
+    return r
+  else:
+    a = _to_f64(a)
+    b = _to_f64(b)
+    r = np.empty_like(a)
+    _algo.min(r, a, b)
     return r
 
 def MIN_MAX_DIFF[A: np.ndarray | list[np.ndarray]](
@@ -1425,6 +1486,29 @@ def WEIGHTED_DELAY[A: np.ndarray | list[np.ndarray]](
     input = _to_f64(input)
     r = np.empty_like(input)
     _algo.weighted_delay(r, input, periods)
+    return r
+
+def WHERE[A: np.ndarray | list[np.ndarray]](
+  condition: A, a: A, b: A
+) -> A:
+  """
+  Choose elements from a or b depending on condition
+  
+  WHERE(cond, a, b) = a if cond else b
+  """
+  if isinstance(condition, list) and isinstance(a, list) and isinstance(b, list):
+    condition = [_to_bool(x) for x in condition]
+    a = [_to_f64(x) for x in a]
+    b = [_to_f64(x) for x in b]
+    r = [np.empty_like(x) for x in a]
+    _algo.where(r, condition, a, b)
+    return r
+  else:
+    condition = _to_bool(condition)
+    a = _to_f64(a)
+    b = _to_f64(b)
+    r = np.empty_like(a)
+    _algo.where(r, condition, a, b)
     return r
 
 def ZSCORE[A: np.ndarray | list[np.ndarray]](
