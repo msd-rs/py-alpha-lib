@@ -205,7 +205,10 @@ mod tests {
     let ctx = Context::new(0, 0, FLAG_STRICTLY_CYCLE);
     ta_sharpe(&ctx, &mut r, &input, periods).unwrap();
     let std = (2.0_f64 / 3.0_f64).sqrt();
-    assert_vec_eq_nan(&r, &vec![f64::NAN, f64::NAN, 2.0 / std, 3.0 / std, 4.0 / std]);
+    assert_vec_eq_nan(
+      &r,
+      &vec![f64::NAN, f64::NAN, 2.0 / std, 3.0 / std, 4.0 / std],
+    );
   }
 
   #[test]
@@ -220,7 +223,6 @@ mod tests {
     // i=1: NaN → skip
     // i=2: valid pairs at 0 and 2, n=2. mean=(1+3)/2=2, var=((1-2)^2+(3-2)^2)/2=1, sharpe=2/1=2
     // i=3: n=3 valid (0,2,3). mean=(1+3+4)/3=8/3, var=...
-    let std2 = (2.0_f64 / 3.0_f64).sqrt();
     assert!(!r[0].is_nan() || r[0].is_nan()); // n=1, should be NaN
     assert!(r[1].is_nan());
     assert!((r[2] - 2.0).abs() < 0.001); // mean=2, std=1 → sharpe=2

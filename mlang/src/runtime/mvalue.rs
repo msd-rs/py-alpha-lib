@@ -1,5 +1,5 @@
+use crate::numarray::{BoolArray, NumArray};
 use anyhow::{Result, anyhow};
-use crate::numarray::{NumArray, BoolArray};
 
 const FLOAT_EPSILON: f64 = 1e-9;
 
@@ -77,14 +77,36 @@ impl MValue {
     }
   }
 
+  pub fn as_str(&self) -> Option<&str> {
+    match self {
+      MValue::Str(s) => Some(s.as_str()),
+      _ => None,
+    }
+  }
+
+  pub fn as_num(&self) -> Option<f64> {
+    match self {
+      MValue::Num(n) => Some(*n),
+      _ => None,
+    }
+  }
+
   pub fn add(&self, other: &Self) -> Result<MValue> {
     match (self, other) {
       (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Num(a + b)),
       (MValue::NumArray(a), MValue::NumArray(b)) => {
         if a.len() != b.len() {
-          return Err(anyhow!("Mismatched array length: {} and {}", a.len(), b.len()));
+          return Err(anyhow!(
+            "Mismatched array length: {} and {}",
+            a.len(),
+            b.len()
+          ));
         }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x + y).collect::<Vec<_>>();
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(x, y)| x + y)
+          .collect::<Vec<_>>();
         Ok(MValue::NumArray(NumArray::from(res)))
       }
       (MValue::NumArray(a), MValue::Num(b)) => {
@@ -104,9 +126,17 @@ impl MValue {
       (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Num(a - b)),
       (MValue::NumArray(a), MValue::NumArray(b)) => {
         if a.len() != b.len() {
-          return Err(anyhow!("Mismatched array length: {} and {}", a.len(), b.len()));
+          return Err(anyhow!(
+            "Mismatched array length: {} and {}",
+            a.len(),
+            b.len()
+          ));
         }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x - y).collect::<Vec<_>>();
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(x, y)| x - y)
+          .collect::<Vec<_>>();
         Ok(MValue::NumArray(NumArray::from(res)))
       }
       (MValue::NumArray(a), MValue::Num(b)) => {
@@ -126,9 +156,17 @@ impl MValue {
       (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Num(a * b)),
       (MValue::NumArray(a), MValue::NumArray(b)) => {
         if a.len() != b.len() {
-          return Err(anyhow!("Mismatched array length: {} and {}", a.len(), b.len()));
+          return Err(anyhow!(
+            "Mismatched array length: {} and {}",
+            a.len(),
+            b.len()
+          ));
         }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x * y).collect::<Vec<_>>();
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(x, y)| x * y)
+          .collect::<Vec<_>>();
         Ok(MValue::NumArray(NumArray::from(res)))
       }
       (MValue::NumArray(a), MValue::Num(b)) => {
@@ -148,9 +186,17 @@ impl MValue {
       (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Num(a / b)),
       (MValue::NumArray(a), MValue::NumArray(b)) => {
         if a.len() != b.len() {
-          return Err(anyhow!("Mismatched array length: {} and {}", a.len(), b.len()));
+          return Err(anyhow!(
+            "Mismatched array length: {} and {}",
+            a.len(),
+            b.len()
+          ));
         }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x / y).collect::<Vec<_>>();
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(x, y)| x / y)
+          .collect::<Vec<_>>();
         Ok(MValue::NumArray(NumArray::from(res)))
       }
       (MValue::NumArray(a), MValue::Num(b)) => {
@@ -170,9 +216,17 @@ impl MValue {
       (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Num(a % b)),
       (MValue::NumArray(a), MValue::NumArray(b)) => {
         if a.len() != b.len() {
-          return Err(anyhow!("Mismatched array length: {} and {}", a.len(), b.len()));
+          return Err(anyhow!(
+            "Mismatched array length: {} and {}",
+            a.len(),
+            b.len()
+          ));
         }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x % y).collect::<Vec<_>>();
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(x, y)| x % y)
+          .collect::<Vec<_>>();
         Ok(MValue::NumArray(NumArray::from(res)))
       }
       (MValue::NumArray(a), MValue::Num(b)) => {
@@ -192,9 +246,17 @@ impl MValue {
       (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Num(a.powf(*b))),
       (MValue::NumArray(a), MValue::NumArray(b)) => {
         if a.len() != b.len() {
-          return Err(anyhow!("Mismatched array length: {} and {}", a.len(), b.len()));
+          return Err(anyhow!(
+            "Mismatched array length: {} and {}",
+            a.len(),
+            b.len()
+          ));
         }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x.powf(*y)).collect::<Vec<_>>();
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(x, y)| x.powf(*y))
+          .collect::<Vec<_>>();
         Ok(MValue::NumArray(NumArray::from(res)))
       }
       (MValue::NumArray(a), MValue::Num(b)) => {
@@ -229,8 +291,14 @@ impl MValue {
     match (self, other) {
       (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Bool(a.eq_f(b))),
       (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x.eq_f(y)).collect::<Vec<_>>();
+        if a.len() != b.len() {
+          return Err(anyhow!("Length mismatch"));
+        }
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(x, y)| x.eq_f(y))
+          .collect::<Vec<_>>();
         Ok(MValue::BoolArray(BoolArray::from(res)))
       }
       (MValue::NumArray(a), MValue::Num(b)) => {
@@ -243,8 +311,14 @@ impl MValue {
       }
       (MValue::Bool(a), MValue::Bool(b)) => Ok(MValue::Bool(a == b)),
       (MValue::BoolArray(a), MValue::BoolArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x == y).collect::<Vec<_>>();
+        if a.len() != b.len() {
+          return Err(anyhow!("Length mismatch"));
+        }
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(x, y)| x == y)
+          .collect::<Vec<_>>();
         Ok(MValue::BoolArray(BoolArray::from(res)))
       }
       (MValue::Str(a), MValue::Str(b)) => Ok(MValue::Bool(a == b)),
@@ -256,8 +330,14 @@ impl MValue {
     match (self, other) {
       (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Bool(a.ne_f(b))),
       (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x.ne_f(y)).collect::<Vec<_>>();
+        if a.len() != b.len() {
+          return Err(anyhow!("Length mismatch"));
+        }
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(x, y)| x.ne_f(y))
+          .collect::<Vec<_>>();
         Ok(MValue::BoolArray(BoolArray::from(res)))
       }
       (MValue::NumArray(a), MValue::Num(b)) => {
@@ -270,8 +350,14 @@ impl MValue {
       }
       (MValue::Bool(a), MValue::Bool(b)) => Ok(MValue::Bool(a != b)),
       (MValue::BoolArray(a), MValue::BoolArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x != y).collect::<Vec<_>>();
+        if a.len() != b.len() {
+          return Err(anyhow!("Length mismatch"));
+        }
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(x, y)| x != y)
+          .collect::<Vec<_>>();
         Ok(MValue::BoolArray(BoolArray::from(res)))
       }
       (MValue::Str(a), MValue::Str(b)) => Ok(MValue::Bool(a != b)),
@@ -283,8 +369,14 @@ impl MValue {
     match (self, other) {
       (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Bool(a.lt_f(b))),
       (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x.lt_f(y)).collect::<Vec<_>>();
+        if a.len() != b.len() {
+          return Err(anyhow!("Length mismatch"));
+        }
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(x, y)| x.lt_f(y))
+          .collect::<Vec<_>>();
         Ok(MValue::BoolArray(BoolArray::from(res)))
       }
       (MValue::NumArray(a), MValue::Num(b)) => {
@@ -303,8 +395,14 @@ impl MValue {
     match (self, other) {
       (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Bool(a.le_f(b))),
       (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x.le_f(y)).collect::<Vec<_>>();
+        if a.len() != b.len() {
+          return Err(anyhow!("Length mismatch"));
+        }
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(x, y)| x.le_f(y))
+          .collect::<Vec<_>>();
         Ok(MValue::BoolArray(BoolArray::from(res)))
       }
       (MValue::NumArray(a), MValue::Num(b)) => {
@@ -323,8 +421,14 @@ impl MValue {
     match (self, other) {
       (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Bool(a.gt_f(b))),
       (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x.gt_f(y)).collect::<Vec<_>>();
+        if a.len() != b.len() {
+          return Err(anyhow!("Length mismatch"));
+        }
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(x, y)| x.gt_f(y))
+          .collect::<Vec<_>>();
         Ok(MValue::BoolArray(BoolArray::from(res)))
       }
       (MValue::NumArray(a), MValue::Num(b)) => {
@@ -343,8 +447,14 @@ impl MValue {
     match (self, other) {
       (MValue::Num(a), MValue::Num(b)) => Ok(MValue::Bool(a.ge_f(b))),
       (MValue::NumArray(a), MValue::NumArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(x, y)| x.ge_f(y)).collect::<Vec<_>>();
+        if a.len() != b.len() {
+          return Err(anyhow!("Length mismatch"));
+        }
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(x, y)| x.ge_f(y))
+          .collect::<Vec<_>>();
         Ok(MValue::BoolArray(BoolArray::from(res)))
       }
       (MValue::NumArray(a), MValue::Num(b)) => {
@@ -365,8 +475,14 @@ impl MValue {
     match (lhs, rhs) {
       (MValue::Bool(a), MValue::Bool(b)) => Ok(MValue::Bool(a && b)),
       (MValue::BoolArray(a), MValue::BoolArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(&x, &y)| x && y).collect::<Vec<_>>();
+        if a.len() != b.len() {
+          return Err(anyhow!("Length mismatch"));
+        }
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(&x, &y)| x && y)
+          .collect::<Vec<_>>();
         Ok(MValue::BoolArray(BoolArray::from(res)))
       }
       (MValue::BoolArray(a), MValue::Bool(b)) => {
@@ -387,8 +503,14 @@ impl MValue {
     match (lhs, rhs) {
       (MValue::Bool(a), MValue::Bool(b)) => Ok(MValue::Bool(a || b)),
       (MValue::BoolArray(a), MValue::BoolArray(b)) => {
-        if a.len() != b.len() { return Err(anyhow!("Length mismatch")); }
-        let res = a.iter().zip(b.iter()).map(|(&x, &y)| x || y).collect::<Vec<_>>();
+        if a.len() != b.len() {
+          return Err(anyhow!("Length mismatch"));
+        }
+        let res = a
+          .iter()
+          .zip(b.iter())
+          .map(|(&x, &y)| x || y)
+          .collect::<Vec<_>>();
         Ok(MValue::BoolArray(BoolArray::from(res)))
       }
       (MValue::BoolArray(a), MValue::Bool(b)) => {

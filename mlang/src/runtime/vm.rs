@@ -1,10 +1,10 @@
 use anyhow::{Result, anyhow};
-use pest::iterators::Pair;
-use std::collections::HashMap;
-use std::cell::RefCell;
 use pest::Parser;
+use pest::iterators::Pair;
+use std::cell::RefCell;
+use std::collections::HashMap;
 
-use crate::numarray::{NumArray, BoolArray};
+use crate::numarray::{BoolArray, NumArray};
 use crate::runtime::mvalue::MValue;
 use alpha_algo::Context;
 
@@ -16,6 +16,7 @@ pub struct Line {
   pub color: Option<String>,
   pub when: Option<Vec<bool>>,
   pub ext_data: Option<Vec<u8>>,
+  pub pos_offset: Option<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -62,6 +63,7 @@ pub enum Expr {
 #[derive(Debug, Clone)]
 pub enum FuncArg {
   Unnamed(Expr),
+  #[allow(dead_code)]
   Named(String, Expr),
 }
 
@@ -89,24 +91,36 @@ fn build_expr(pair: Pair<crate::Rule>) -> Result<Expr> {
         let false_case_pair = inner.next().unwrap();
         let true_case = build_expr(true_case_pair)?;
         let false_case = build_expr(false_case_pair)?;
-        
+
         // SELF Pattern rewrite logic
         if let Expr::SelfKw = false_case {
           if let Expr::Mul(left, right) = &true_case {
             if let Expr::SelfKw = **left {
-              return Ok(Expr::ScanMul { operand: right.clone(), cond: Box::new(first) });
+              return Ok(Expr::ScanMul {
+                operand: right.clone(),
+                cond: Box::new(first),
+              });
             } else if let Expr::SelfKw = **right {
-              return Ok(Expr::ScanMul { operand: left.clone(), cond: Box::new(first) });
+              return Ok(Expr::ScanMul {
+                operand: left.clone(),
+                cond: Box::new(first),
+              });
             }
           } else if let Expr::Add(left, right) = &true_case {
             if let Expr::SelfKw = **left {
-              return Ok(Expr::ScanAdd { operand: right.clone(), cond: Box::new(first) });
+              return Ok(Expr::ScanAdd {
+                operand: right.clone(),
+                cond: Box::new(first),
+              });
             } else if let Expr::SelfKw = **right {
-              return Ok(Expr::ScanAdd { operand: left.clone(), cond: Box::new(first) });
+              return Ok(Expr::ScanAdd {
+                operand: left.clone(),
+                cond: Box::new(first),
+              });
             }
           }
         }
-        
+
         Ok(Expr::Ternary {
           cond: Box::new(first),
           true_case: Box::new(true_case),
@@ -193,17 +207,13 @@ fn build_expr(pair: Pair<crate::Rule>) -> Result<Expr> {
       }
       Ok(accum)
     }
-    crate::Rule::atom => {
-      build_expr(pair.into_inner().next().unwrap())
-    }
+    crate::Rule::atom => build_expr(pair.into_inner().next().unwrap()),
     crate::Rule::neg => {
       let inner = pair.into_inner().next().unwrap();
       Ok(Expr::Neg(Box::new(build_expr(inner)?)))
     }
     crate::Rule::self_kw => Ok(Expr::SelfKw),
-    crate::Rule::dotted_name => {
-      Ok(Expr::DottedName(pair.as_str().to_string()))
-    }
+    crate::Rule::dotted_name => Ok(Expr::DottedName(pair.as_str().to_string())),
     crate::Rule::func_call => {
       let mut inner = pair.into_inner();
       let name = inner.next().unwrap().as_str().to_string();
@@ -223,9 +233,7 @@ fn build_expr(pair: Pair<crate::Rule>) -> Result<Expr> {
       }
       Ok(Expr::FuncCall { name, args })
     }
-    crate::Rule::identifier => {
-      Ok(Expr::Identifier(pair.as_str().to_string()))
-    }
+    crate::Rule::identifier => Ok(Expr::Identifier(pair.as_str().to_string())),
     crate::Rule::number => {
       let val: f64 = pair.as_str().parse()?;
       Ok(Expr::Num(val))
@@ -239,7 +247,10 @@ fn build_expr(pair: Pair<crate::Rule>) -> Result<Expr> {
       };
       Ok(Expr::Str(content.to_string()))
     }
-    _ => Err(anyhow!("Unsupported rule in build_expr: {:?}", pair.as_rule())),
+    _ => Err(anyhow!(
+      "Unsupported rule in build_expr: {:?}",
+      pair.as_rule()
+    )),
   }
 }
 
@@ -272,29 +283,37 @@ fn build_statement(pair: Pair<crate::Rule>) -> Result<Statement> {
           val.to_lowercase()
         }
       });
-      Ok(Statement::LineDef { name, expr, color, style })
+      Ok(Statement::LineDef {
+        name,
+        expr,
+        color,
+        style,
+      })
     }
     crate::Rule::expr_stmt => {
       let expr = build_expr(stmt_inner.into_inner().next().unwrap())?;
       Ok(Statement::ExprStmt(expr))
     }
-    _ => Err(anyhow!("Unsupported statement rule: {:?}", stmt_inner.as_rule())),
+    _ => Err(anyhow!(
+      "Unsupported statement rule: {:?}",
+      stmt_inner.as_rule()
+    )),
   }
 }
 
 fn select_ternary(cond: &BoolArray, true_val: &MValue, false_val: &MValue) -> Result<MValue> {
   let len = cond.len();
-  
+
   let is_numeric = |val: &MValue| match val {
     MValue::Num(_) | MValue::NumArray(_) => true,
     _ => false,
   };
-  
+
   let is_boolean = |val: &MValue| match val {
     MValue::Bool(_) | MValue::BoolArray(_) => true,
     _ => false,
   };
-  
+
   if is_numeric(true_val) && is_numeric(false_val) {
     let mut data = Vec::with_capacity(len);
     for i in 0..len {
@@ -328,17 +347,23 @@ fn select_ternary(cond: &BoolArray, true_val: &MValue, false_val: &MValue) -> Re
     }
     Ok(MValue::BoolArray(BoolArray::from(data)))
   } else {
-    Err(anyhow!("Incompatible types in ternary branches: {:?} and {:?}", true_val, false_val))
+    Err(anyhow!(
+      "Incompatible types in ternary branches: {:?} and {:?}",
+      true_val,
+      false_val
+    ))
   }
 }
 
-fn is_parameter(s: &str) -> bool {
+fn check_parameter(s: &str) -> Option<String> {
   if s.len() < 2 {
-    return false;
+    return None;
   }
-  let mut chars = s.chars();
-  let first = chars.next().unwrap();
-  (first == 'P' || first == 'p') && chars.all(|c| c.is_ascii_digit())
+  if s.starts_with("P.") || s.starts_with("p.") {
+    Some(s[2..].to_string())
+  } else {
+    None
+  }
 }
 
 pub struct MRuntime {
@@ -419,15 +444,23 @@ impl MRuntime {
         let val = self.eval_expr(expr, datas, params)?;
         self.variables.insert(name.to_lowercase(), val);
       }
-      Statement::LineDef { name, expr, color, style: _ } => {
+      Statement::LineDef {
+        name,
+        expr,
+        color,
+        style,
+      } => {
         let val = self.eval_expr(expr, datas, params)?;
         self.variables.insert(name.to_lowercase(), val.clone());
-        
+
         let default_len = datas.values().next().map(|a| a.len()).unwrap_or(1);
         let arr = val.to_num_array(default_len)?;
-        
+
         let line = Line {
-          kind: "line".to_string(),
+          kind: style
+            .as_ref()
+            .map(|s| s.to_string())
+            .unwrap_or("line".to_string()),
           name: name.to_lowercase(),
           data: arr.into(),
           color: color.clone(),
@@ -453,9 +486,8 @@ impl MRuntime {
       return Ok(val.clone());
     }
 
-    if is_parameter(name) {
-      let name_upper = name.to_uppercase();
-      if let Some(&val) = params.get(&name_upper).or_else(|| params.get(&name_lower)) {
+    if let Some(param_name) = check_parameter(name) {
+      if let Some(&val) = params.get(&param_name) {
         return Ok(MValue::Num(val));
       }
       return Err(anyhow!("Parameter {} not found in params map", name));
@@ -471,7 +503,8 @@ impl MRuntime {
       _ => name_upper.as_str(),
     };
 
-    if let Some(arr) = datas.get(data_key)
+    if let Some(arr) = datas
+      .get(data_key)
       .or_else(|| datas.get(&data_key.to_lowercase()))
       .or_else(|| datas.get(name))
       .or_else(|| datas.get(&name_lower))
@@ -479,7 +512,10 @@ impl MRuntime {
       return Ok(MValue::NumArray(arr.clone()));
     }
 
-    Err(anyhow!("Identifier {} could not be resolved as variable, parameter, or data array", name))
+    Err(anyhow!(
+      "Identifier {} could not be resolved as variable, parameter, or data array",
+      name
+    ))
   }
 
   fn eval_expr(
@@ -491,7 +527,9 @@ impl MRuntime {
     match expr {
       Expr::Num(n) => Ok(MValue::Num(*n)),
       Expr::Str(s) => Ok(MValue::Str(s.clone())),
-      Expr::SelfKw => Err(anyhow!("SELF keyword cannot be evaluated directly outside recursive contexts")),
+      Expr::SelfKw => Err(anyhow!(
+        "SELF keyword cannot be evaluated directly outside recursive contexts"
+      )),
       Expr::Identifier(name) => self.resolve_identifier(name, datas, params),
       Expr::DottedName(name) => self.resolve_identifier(name, datas, params),
       Expr::Neg(inner) => {
@@ -568,7 +606,11 @@ impl MRuntime {
         let r = self.eval_expr(right, datas, params)?;
         l.or_op(&r)
       }
-      Expr::Ternary { cond, true_case, false_case } => {
+      Expr::Ternary {
+        cond,
+        true_case,
+        false_case,
+      } => {
         let c = self.eval_expr(cond, datas, params)?;
         match c {
           MValue::Bool(b) => {
@@ -583,22 +625,24 @@ impl MRuntime {
             let f = self.eval_expr(false_case, datas, params)?;
             select_ternary(&arr, &t, &f)
           }
-          _ => Err(anyhow!("Ternary condition must evaluate to a boolean or boolean array")),
+          _ => Err(anyhow!(
+            "Ternary condition must evaluate to a boolean or boolean array"
+          )),
         }
       }
       Expr::ScanMul { operand, cond } => {
         let cond_val = self.eval_expr(cond, datas, params)?;
         let operand_val = self.eval_expr(operand, datas, params)?;
-        
+
         let len = match (&operand_val, &cond_val) {
           (MValue::NumArray(a), _) => a.len(),
           (_, MValue::BoolArray(b)) => b.len(),
           _ => datas.values().next().map(|a| a.len()).unwrap_or(1),
         };
-        
+
         let cond_arr = cond_val.to_bool_array(len)?;
         let op_arr = operand_val.to_num_array(len)?;
-        
+
         let mut r = vec![0.0; len];
         alpha_algo::ta_scan_mul::<f64>(&self.context, &mut r, &op_arr, &cond_arr)?;
         Ok(MValue::NumArray(NumArray::from(r)))
@@ -606,16 +650,16 @@ impl MRuntime {
       Expr::ScanAdd { operand, cond } => {
         let cond_val = self.eval_expr(cond, datas, params)?;
         let operand_val = self.eval_expr(operand, datas, params)?;
-        
+
         let len = match (&operand_val, &cond_val) {
           (MValue::NumArray(a), _) => a.len(),
           (_, MValue::BoolArray(b)) => b.len(),
           _ => datas.values().next().map(|a| a.len()).unwrap_or(1),
         };
-        
+
         let cond_arr = cond_val.to_bool_array(len)?;
         let op_arr = operand_val.to_num_array(len)?;
-        
+
         let mut r = vec![0.0; len];
         alpha_algo::ta_scan_add::<f64>(&self.context, &mut r, &op_arr, &cond_arr)?;
         Ok(MValue::NumArray(NumArray::from(r)))
@@ -632,13 +676,16 @@ impl MRuntime {
             }
           }
         }
-        
+
         let name_upper = name.to_uppercase();
         if let Some(func) = self.functions.get(&name_upper) {
           let mut lines_borrow = self.lines.borrow_mut();
           func(&self.context, &evaluated_args, &mut *lines_borrow)
         } else {
-          Err(anyhow!("Function {} is not registered in the runtime", name))
+          Err(anyhow!(
+            "Function {} is not registered in the runtime",
+            name
+          ))
         }
       }
     }
@@ -659,7 +706,12 @@ macro_rules! reg_ta_1_arr_1_usize {
       let input = args[0].to_num_array(default_len)?;
       let periods = match &args[1] {
         MValue::Num(n) => *n as usize,
-        _ => return Err(anyhow!("{} second argument must be a number", stringify!($name))),
+        _ => {
+          return Err(anyhow!(
+            "{} second argument must be a number",
+            stringify!($name)
+          ));
+        }
       };
       let mut r = vec![0.0; input.len()];
       $ta_fn::<f64>(ctx, &mut r, &input, periods)?;
@@ -681,7 +733,12 @@ macro_rules! reg_ta_1_bool_arr_1_usize {
       let input = args[0].to_bool_array(default_len)?;
       let periods = match &args[1] {
         MValue::Num(n) => *n as usize,
-        _ => return Err(anyhow!("{} second argument must be a number", stringify!($name))),
+        _ => {
+          return Err(anyhow!(
+            "{} second argument must be a number",
+            stringify!($name)
+          ));
+        }
       };
       let mut r = vec![0.0; input.len()];
       $ta_fn::<f64>(ctx, &mut r, &input, periods)?;
@@ -741,7 +798,12 @@ macro_rules! reg_ta_2_arr_1_usize {
       let y = args[1].to_num_array(default_len)?;
       let periods = match &args[2] {
         MValue::Num(n) => *n as usize,
-        _ => return Err(anyhow!("{} third argument must be a number", stringify!($name))),
+        _ => {
+          return Err(anyhow!(
+            "{} third argument must be a number",
+            stringify!($name)
+          ));
+        }
       };
       let mut r = vec![0.0; x.len()];
       $ta_fn::<f64>(ctx, &mut r, &x, &y, periods)?;
@@ -783,7 +845,12 @@ macro_rules! reg_ta_1_arr_1_f64 {
       let input = args[0].to_num_array(default_len)?;
       let val = match &args[1] {
         MValue::Num(n) => *n,
-        _ => return Err(anyhow!("{} second argument must be a number", stringify!($name))),
+        _ => {
+          return Err(anyhow!(
+            "{} second argument must be a number",
+            stringify!($name)
+          ));
+        }
       };
       let mut r = vec![0.0; input.len()];
       $ta_fn::<f64>(ctx, &mut r, &input, val)?;
@@ -805,11 +872,21 @@ macro_rules! reg_ta_1_arr_2_usize {
       let input = args[0].to_num_array(default_len)?;
       let val1 = match &args[1] {
         MValue::Num(n) => *n as usize,
-        _ => return Err(anyhow!("{} second argument must be a number", stringify!($name))),
+        _ => {
+          return Err(anyhow!(
+            "{} second argument must be a number",
+            stringify!($name)
+          ));
+        }
       };
       let val2 = match &args[2] {
         MValue::Num(n) => *n as usize,
-        _ => return Err(anyhow!("{} third argument must be a number", stringify!($name))),
+        _ => {
+          return Err(anyhow!(
+            "{} third argument must be a number",
+            stringify!($name)
+          ));
+        }
       };
       let mut r = vec![0.0; input.len()];
       $ta_fn::<f64>(ctx, &mut r, &input, val1, val2)?;
@@ -831,7 +908,12 @@ macro_rules! reg_ta_1_arr_1_usize_other {
       let input = args[0].to_num_array(default_len)?;
       let val = match &args[1] {
         MValue::Num(n) => *n as usize,
-        _ => return Err(anyhow!("{} second argument must be a number", stringify!($name))),
+        _ => {
+          return Err(anyhow!(
+            "{} second argument must be a number",
+            stringify!($name)
+          ));
+        }
       };
       let mut r = vec![0.0; input.len()];
       $ta_fn::<f64>(ctx, &mut r, &input, val)?;
@@ -873,11 +955,21 @@ macro_rules! reg_ta_1_arr_1_usize_1_f64 {
       let input = args[0].to_num_array(default_len)?;
       let periods = match &args[1] {
         MValue::Num(n) => *n as usize,
-        _ => return Err(anyhow!("{} second argument must be a number", stringify!($name))),
+        _ => {
+          return Err(anyhow!(
+            "{} second argument must be a number",
+            stringify!($name)
+          ));
+        }
       };
       let q = match &args[2] {
         MValue::Num(n) => *n,
-        _ => return Err(anyhow!("{} third argument must be a number", stringify!($name))),
+        _ => {
+          return Err(anyhow!(
+            "{} third argument must be a number",
+            stringify!($name)
+          ));
+        }
       };
       let mut r = vec![0.0; input.len()];
       $ta_fn::<f64>(ctx, &mut r, &input, periods, q)?;
@@ -901,7 +993,12 @@ macro_rules! reg_ta_2_arr_1_usize_to_bool {
       let b = args[1].to_num_array(default_len)?;
       let n = match &args[2] {
         MValue::Num(num) => *num as usize,
-        _ => return Err(anyhow!("{} third argument must be a number", stringify!($name))),
+        _ => {
+          return Err(anyhow!(
+            "{} third argument must be a number",
+            stringify!($name)
+          ));
+        }
       };
       let mut r = vec![false; a.len()];
       $ta_fn::<f64>(ctx, &mut r, &a, &b, n)?;
@@ -925,7 +1022,12 @@ macro_rules! reg_ta_1_arr_1_bool_arr_1_usize {
       let condition = args[1].to_bool_array(default_len)?;
       let periods = match &args[2] {
         MValue::Num(n) => *n as usize,
-        _ => return Err(anyhow!("{} third argument must be a number", stringify!($name))),
+        _ => {
+          return Err(anyhow!(
+            "{} third argument must be a number",
+            stringify!($name)
+          ));
+        }
       };
       let mut r = vec![0.0; input.len()];
       $ta_fn::<f64>(ctx, &mut r, &input, &condition, periods)?;
@@ -951,11 +1053,21 @@ macro_rules! reg_ta_open_close_calc_delay_periods {
       let is_calc = args[2].to_num_array(default_len)?;
       let delay = match &args[3] {
         MValue::Num(n) => *n as usize,
-        _ => return Err(anyhow!("{} fourth argument must be a number", stringify!($name))),
+        _ => {
+          return Err(anyhow!(
+            "{} fourth argument must be a number",
+            stringify!($name)
+          ));
+        }
       };
       let periods = match &args[4] {
         MValue::Num(n) => *n as usize,
-        _ => return Err(anyhow!("{} fifth argument must be a number", stringify!($name))),
+        _ => {
+          return Err(anyhow!(
+            "{} fifth argument must be a number",
+            stringify!($name)
+          ));
+        }
       };
       let mut r = vec![0.0; open.len()];
       $ta_fn::<f64>(ctx, &mut r, &open, &close, &is_calc, delay, periods)?;
@@ -977,11 +1089,21 @@ macro_rules! reg_ta_1_arr_2_usize_sma {
       let input = args[0].to_num_array(default_len)?;
       let n = match &args[1] {
         MValue::Num(val) => *val as usize,
-        _ => return Err(anyhow!("{} second argument must be a number", stringify!($name))),
+        _ => {
+          return Err(anyhow!(
+            "{} second argument must be a number",
+            stringify!($name)
+          ));
+        }
       };
       let m = match &args[2] {
         MValue::Num(val) => *val as usize,
-        _ => return Err(anyhow!("{} third argument must be a number", stringify!($name))),
+        _ => {
+          return Err(anyhow!(
+            "{} third argument must be a number",
+            stringify!($name)
+          ));
+        }
       };
       let mut r = vec![0.0; input.len()];
       $ta_fn::<f64>(ctx, &mut r, &input, n, m)?;
@@ -1000,7 +1122,9 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
   reg_ta_2_arr_1_usize!(rt, BETA, ta_beta);
   reg_ta_1_arr_1_usize_other!(rt, BINS, ta_bins);
   rt.register_func("BW_SPLIT", |ctx, args, _lines| {
-    if args.len() != 5 { return Err(anyhow!("BW_SPLIT expects 5 arguments")); }
+    if args.len() != 5 {
+      return Err(anyhow!("BW_SPLIT expects 5 arguments"));
+    }
     let default_len = match (&args[0], &args[1], &args[2], &args[3], &args[4]) {
       (MValue::NumArray(a), _, _, _, _) => a.len(),
       (_, MValue::NumArray(b), _, _, _) => b.len(),
@@ -1027,7 +1151,9 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
     Ok(MValue::NumArray(NumArray::from(r)))
   });
   rt.register_func("BW_SPLIT_FACTOR", |ctx, args, _lines| {
-    if args.len() != 5 { return Err(anyhow!("BW_SPLIT_FACTOR expects 5 arguments")); }
+    if args.len() != 5 {
+      return Err(anyhow!("BW_SPLIT_FACTOR expects 5 arguments"));
+    }
     let default_len = match (&args[0], &args[1], &args[2], &args[3], &args[4]) {
       (MValue::NumArray(a), _, _, _, _) => a.len(),
       (_, MValue::NumArray(b), _, _, _) => b.len(),
@@ -1066,7 +1192,9 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
   reg_ta_1_arr_2_usize!(rt, ENTROPY, ta_entropy);
   reg_ta_open_close_calc_delay_periods!(rt, FRET, ta_fret);
   rt.register_func("FW_SPLIT", |ctx, args, _lines| {
-    if args.len() != 5 { return Err(anyhow!("FW_SPLIT expects 5 arguments")); }
+    if args.len() != 5 {
+      return Err(anyhow!("FW_SPLIT expects 5 arguments"));
+    }
     let default_len = match (&args[0], &args[1], &args[2], &args[3], &args[4]) {
       (MValue::NumArray(a), _, _, _, _) => a.len(),
       (_, MValue::NumArray(b), _, _, _) => b.len(),
@@ -1093,7 +1221,9 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
     Ok(MValue::NumArray(NumArray::from(r)))
   });
   rt.register_func("FW_SPLIT_FACTOR", |ctx, args, _lines| {
-    if args.len() != 5 { return Err(anyhow!("FW_SPLIT_FACTOR expects 5 arguments")); }
+    if args.len() != 5 {
+      return Err(anyhow!("FW_SPLIT_FACTOR expects 5 arguments"));
+    }
     let default_len = match (&args[0], &args[1], &args[2], &args[3], &args[4]) {
       (MValue::NumArray(a), _, _, _, _) => a.len(),
       (_, MValue::NumArray(b), _, _, _) => b.len(),
@@ -1142,9 +1272,11 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
   reg_ta_2_arr_1_usize!(rt, REGBETA, ta_regbeta);
   reg_ta_2_arr_1_usize!(rt, REGRESI, ta_regresi);
   reg_ta_2_arr_1_usize_to_bool!(rt, RLONGCROSS, ta_rlongcross);
-  
+
   rt.register_func("SCAN_ADD", |ctx, args, _lines| {
-    if args.len() != 2 { return Err(anyhow!("SCAN_ADD expects 2 arguments")); }
+    if args.len() != 2 {
+      return Err(anyhow!("SCAN_ADD expects 2 arguments"));
+    }
     let default_len = match (&args[0], &args[1]) {
       (MValue::NumArray(a), _) => a.len(),
       (_, MValue::BoolArray(b)) => b.len(),
@@ -1158,7 +1290,9 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
   });
 
   rt.register_func("SCAN_MUL", |ctx, args, _lines| {
-    if args.len() != 2 { return Err(anyhow!("SCAN_MUL expects 2 arguments")); }
+    if args.len() != 2 {
+      return Err(anyhow!("SCAN_MUL expects 2 arguments"));
+    }
     let default_len = match (&args[0], &args[1]) {
       (MValue::NumArray(a), _) => a.len(),
       (_, MValue::BoolArray(b)) => b.len(),
@@ -1184,7 +1318,9 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
   reg_ta_1_arr_1_usize!(rt, ZSCORE, ta_zscore);
 
   rt.register_func("DRAWICON", |_ctx, args, lines| {
-    if args.len() != 3 { return Err(anyhow!("DRAWICON expects 3 arguments")); }
+    if args.len() < 3 {
+      return Err(anyhow!("DRAWICON expects at least 3 arguments"));
+    }
     let default_len = match (&args[0], &args[1]) {
       (MValue::BoolArray(a), _) => a.len(),
       (_, MValue::NumArray(b)) => b.len(),
@@ -1194,21 +1330,40 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
     let pos = args[1].to_num_array(default_len)?;
     let icon = match &args[2] {
       MValue::Num(n) => *n as u32,
+      MValue::Str(n) => {
+        if n.starts_with("\\") {
+          u32::from_str_radix(&n.as_str()[1..], 16)?
+        } else if n.as_bytes().iter().all(|c| c.is_ascii_digit()) {
+          n.parse::<u32>()?
+        } else if n.as_bytes().iter().all(|c| c.is_ascii_hexdigit()) {
+          u32::from_str_radix(&n.as_str(), 16)?
+        } else if n.starts_with("0x") || n.starts_with("0X") {
+          u32::from_str_radix(&n.as_str()[2..], 16)?
+        } else {
+          return Err(anyhow!("DRAWICON third argument must be a number"));
+        }
+      }
       _ => return Err(anyhow!("DRAWICON third argument must be a number")),
     };
+    let color = args.get(3).and_then(|v| v.as_str()).map(|s| s.to_string());
+    let pos_offset = args.get(4).and_then(|v| v.as_num());
     lines.push(Line {
       kind: "icon".to_string(),
       name: "icon".to_string(),
       data: pos.into(),
       when: Some(when.into()),
+      color,
       ext_data: Some(icon.to_le_bytes().to_vec()),
+      pos_offset,
       ..Default::default()
     });
     Ok(MValue::Num(0.0))
   });
 
   rt.register_func("DRAWTEXT", |_ctx, args, lines| {
-    if args.len() != 3 { return Err(anyhow!("DRAWTEXT expects 3 arguments")); }
+    if args.len() < 3 {
+      return Err(anyhow!("DRAWTEXT expects at least 3 arguments"));
+    }
     let default_len = match (&args[0], &args[1]) {
       (MValue::BoolArray(a), _) => a.len(),
       (_, MValue::NumArray(b)) => b.len(),
@@ -1219,14 +1374,22 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
     let text = match &args[2] {
       MValue::Str(s) => s.clone(),
       MValue::Num(n) => n.to_string(),
-      _ => return Err(anyhow!("DRAWTEXT third argument must be a string or number")),
+      _ => {
+        return Err(anyhow!(
+          "DRAWTEXT third argument must be a string or number"
+        ));
+      }
     };
+    let color = args.get(3).and_then(|v| v.as_str()).map(|s| s.to_string());
+    let pos_offset = args.get(4).and_then(|v| v.as_num());
     lines.push(Line {
       kind: "text".to_string(),
       name: "text".to_string(),
       data: pos.into(),
       when: Some(when.into()),
       ext_data: Some(text.as_bytes().to_vec()),
+      color,
+      pos_offset,
       ..Default::default()
     });
     Ok(MValue::Num(0.0))

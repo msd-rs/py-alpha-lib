@@ -27,6 +27,8 @@ pub struct JSLine {
   pub when: Option<Box<[u8]>>,
   /// extra data for some `kind`
   pub ext_data: Option<JsValue>,
+  /// pos offset as char height
+  pub pos_offset: Option<f64>,
 }
 
 impl From<Line> for JSLine {
@@ -56,6 +58,7 @@ impl From<Line> for JSLine {
         .when
         .map(|v| v.into_iter().map(|b| if b { 1u8 } else { 0u8 }).collect()),
       ext_data,
+      pos_offset: line.pos_offset,
     }
   }
 }

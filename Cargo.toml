@@ -19,3 +19,8 @@ mlua = { version = "0.11", features = ["lua55", "vendored", "anyhow"] }
 
 [workspace.dependencies.pyo3]
 version = "0.28"
+
+
+[profile.wasm]
+inherits = "release"
+opt-level = "s"

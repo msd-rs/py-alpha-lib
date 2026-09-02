@@ -240,8 +240,64 @@ fn test_runtime_ta_and_lines() -> Result<()> {
 #[test]
 fn test_runtime_draw_and_ternary() -> Result<()> {
   let code = r#"
-    UP := C > 2.0;
-    DRAWICON(UP, C, 1);
+    DRAWICON(C > 2.0, C*0.9, "\1");
+    DRAWICON(C > 2.0, C*0.9, "\1", "GREEN");
+  "#;
+
+  let mut datas = HashMap::new();
+  datas.insert(
+    "C".to_string(),
+    NumArray::from(vec![1.0, 2.0, 3.0, 4.0, 5.0]),
+  );
+  let params = HashMap::new();
+
+  let mut rt = MRuntime::new(Context::default());
+  let lines = rt.execute(code, &datas, &params)?;
+
+  assert_eq!(lines.len(), 2);
+  assert_eq!(lines[0].kind, "icon");
+  assert_eq!(lines[0].name, "icon");
+  assert_eq!(lines[0].data, vec![0.9, 1.8, 2.7, 3.6, 4.5]);
+
+  let when = lines[0].when.as_ref().unwrap();
+  assert_eq!(when, &vec![false, false, true, true, true]);
+
+  let icon = u32::from_le_bytes(lines[0].ext_data.as_ref().unwrap().as_slice().try_into()?);
+  assert_eq!(icon, 1);
+
+  assert_eq!(lines[1].color, Some("GREEN".to_string()));
+
+  Ok(())
+}
+
+#[test]
+fn test_runtime_parameters() -> Result<()> {
+  let code = r#"
+    MA3 : MA(C, P.fast);
+  "#;
+
+  let mut datas = HashMap::new();
+  datas.insert(
+    "C".to_string(),
+    NumArray::from(vec![1.0, 2.0, 3.0, 4.0, 5.0]),
+  );
+  let mut params = HashMap::new();
+  params.insert("fast".to_string(), 3.0);
+
+  let mut rt = MRuntime::new(Context::default());
+  let lines = rt.execute(code, &datas, &params)?;
+
+  assert_eq!(lines.len(), 1);
+  assert_eq!(lines[0].name, "ma3");
+  assert_eq!(lines[0].data.len(), 5);
+
+  Ok(())
+}
+
+#[test]
+fn test_runtime_line_type() -> Result<()> {
+  let code = r#"
+  MA5 : MA(C, 5),_,colorstick;
   "#;
 
   let mut datas = HashMap::new();
@@ -255,15 +311,10 @@ fn test_runtime_draw_and_ternary() -> Result<()> {
   let lines = rt.execute(code, &datas, &params)?;
 
   assert_eq!(lines.len(), 1);
-  assert_eq!(lines[0].kind, "icon");
-  assert_eq!(lines[0].name, "icon");
-  assert_eq!(lines[0].data, vec![1.0, 2.0, 3.0, 4.0, 5.0]);
-
-  let when = lines[0].when.as_ref().unwrap();
-  assert_eq!(when, &vec![false, false, true, true, true]);
-
-  let icon = u32::from_le_bytes(lines[0].ext_data.as_ref().unwrap().as_slice().try_into()?);
-  assert_eq!(icon, 1);
+  assert_eq!(lines[0].name, "ma5");
+  assert_eq!(lines[0].data.len(), 5);
+  assert_eq!(lines[0].color, Some("_".to_string()));
+  assert_eq!(lines[0].kind, "colorstick");
 
   Ok(())
 }
@@ -331,7 +382,7 @@ fn test_runtime_split() -> Result<()> {
   datas.insert("TS".to_string(), NumArray::from(vec![0.0, 1.0, 0.0]));
   datas.insert("RS".to_string(), NumArray::from(vec![0.0, 0.0, 0.0]));
   datas.insert("RP".to_string(), NumArray::from(vec![0.0, 0.0, 0.0]));
-  
+
   let params = HashMap::new();
   let mut rt = MRuntime::new(Context::default());
   let lines = rt.execute(code, &datas, &params)?;
@@ -358,7 +409,7 @@ fn test_runtime_split_factor() -> Result<()> {
   datas.insert("TS".to_string(), NumArray::from(vec![0.0, 1.0, 0.0]));
   datas.insert("RS".to_string(), NumArray::from(vec![0.0, 0.0, 0.0]));
   datas.insert("RP".to_string(), NumArray::from(vec![0.0, 0.0, 0.0]));
-  
+
   let params = HashMap::new();
   let mut rt = MRuntime::new(Context::default());
   let lines = rt.execute(code, &datas, &params)?;
@@ -371,4 +422,3 @@ fn test_runtime_split_factor() -> Result<()> {
 
   Ok(())
 }
-
