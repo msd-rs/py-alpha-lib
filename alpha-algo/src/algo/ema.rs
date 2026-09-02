@@ -64,7 +64,6 @@ pub fn ta_lwma<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-
   if periods == 1 {
     r.copy_from_slice(input);
     return Ok(());
@@ -245,7 +244,11 @@ pub fn ta_ema_v<NumT: Float + Send + Sync>(
           *r = NumT::nan();
           prev = *c;
         } else {
-          let alpha = if period > 0 { NumT::from(2.0).unwrap() / NumT::from(period + 1).unwrap() } else { NumT::zero() };
+          let alpha = if period > 0 {
+            NumT::from(2.0).unwrap() / NumT::from(period + 1).unwrap()
+          } else {
+            NumT::zero()
+          };
           let k = NumT::one() - alpha;
           *r = alpha * *c + k * prev;
           prev = *r;
@@ -293,7 +296,11 @@ pub fn ta_sma_v<NumT: Float + Send + Sync>(
           *r = NumT::nan();
           prev = *c;
         } else {
-          let alpha = if period > 0 { NumT::from(m).unwrap() / NumT::from(period).unwrap() } else { NumT::zero() };
+          let alpha = if period > 0 {
+            NumT::from(m).unwrap() / NumT::from(period).unwrap()
+          } else {
+            NumT::zero()
+          };
           let k = NumT::one() - alpha;
           *r = alpha * *c + k * prev;
           prev = *r;
@@ -404,7 +411,8 @@ pub fn ta_lwma_v<NumT: Float + Send + Sync>(
                 let start_hist_idx = l - period;
                 if i - history_indices[start_hist_idx] + 1 == period {
                   let w_sum = (history_weighted_pref[l] - history_weighted_pref[start_hist_idx])
-                    - NumT::from(start_hist_idx).unwrap() * (history_pref[l] - history_pref[start_hist_idx]);
+                    - NumT::from(start_hist_idx).unwrap()
+                      * (history_pref[l] - history_pref[start_hist_idx]);
                   r[i] = w_sum / sum_weight;
                 }
               }
@@ -412,7 +420,8 @@ pub fn ta_lwma_v<NumT: Float + Send + Sync>(
               if l >= period {
                 let start_hist_idx = l - period;
                 let w_sum = (history_weighted_pref[l] - history_weighted_pref[start_hist_idx])
-                  - NumT::from(start_hist_idx).unwrap() * (history_pref[l] - history_pref[start_hist_idx]);
+                  - NumT::from(start_hist_idx).unwrap()
+                    * (history_pref[l] - history_pref[start_hist_idx]);
                 r[i] = w_sum / sum_weight;
               }
             }
@@ -474,7 +483,6 @@ pub fn ema_impl<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-
   if weight < NumT::zero() || weight > NumT::one() {
     return Err(Error::InvalidParameter(
       "alpha must be between 0 and 1".to_string(),
@@ -502,6 +510,9 @@ pub fn ema_impl<NumT: Float + Send + Sync>(
           *r = NumT::nan();
           prev = *c;
         } else {
+          if prev.is_nan() {
+            prev = *c;
+          }
           *r = weight * *c + k * prev;
           prev = *r;
         }

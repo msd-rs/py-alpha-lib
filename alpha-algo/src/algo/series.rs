@@ -19,7 +19,6 @@ pub fn ta_ref<NumT: Float + Send + Sync>(
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
 
-
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, x)| {
@@ -45,6 +44,8 @@ pub fn ta_ref<NumT: Float + Send + Sync>(
         for i in start..end {
           if i >= periods {
             r[i] = x[i - periods];
+          } else if !ctx.is_strictly_cycle() {
+            r[i] = x[0];
           }
         }
       }
@@ -95,6 +96,8 @@ pub fn ta_ref_v<NumT: Float + Send + Sync>(
           let period = p[i];
           if i >= period {
             r[i] = x[i - period];
+          } else if !ctx.is_strictly_cycle() {
+            r[i] = x[0];
           }
         }
       }
@@ -114,7 +117,6 @@ pub fn ta_barslast<NumT: Float + Send + Sync>(
   if r.len() != input.len() {
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
-
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
@@ -151,7 +153,6 @@ pub fn ta_barssince<NumT: Float + Send + Sync>(
   if r.len() != input.len() {
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
-
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
@@ -193,7 +194,6 @@ pub fn ta_count<NumT: Float + Send + Sync>(
   if r.len() != input.len() {
     return Err(Error::LengthMismatch(r.len(), input.len()));
   }
-
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
@@ -294,8 +294,12 @@ pub fn ta_count_v<NumT: Float + Send + Sync>(
 
       for i in start..end {
         let period = p[i];
-        let start_idx = if period == 0 { 0 } else { if i >= period { i + 1 - period } else { 0 } };
-        
+        let start_idx = if period == 0 {
+          0
+        } else {
+          if i >= period { i + 1 - period } else { 0 }
+        };
+
         let mut can_write = false;
         if period == 0 {
           can_write = true;
