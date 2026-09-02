@@ -460,3 +460,57 @@ fn test_runtime_abs_max_min_where() -> Result<()> {
   Ok(())
 }
 
+#[test]
+fn test_runtime_all_any_backset_filter_last() -> Result<()> {
+  let code = r#"
+    COND : A > B;
+    V_ALL : ALL(COND, 2);
+    V_ANY : ANY(COND, 2);
+    V_EXIST : EXIST(COND, 2);
+    V_BACKSET : BACKSET(COND, 2);
+    V_FILTER : FILTER(COND, 1);
+    V_LAST : LAST(COND);
+  "#;
+
+  let mut datas = HashMap::new();
+  // COND: [-5>2(F), 10>5(T), 4>1(T), -3>-1(F), 8>2(T)] -> [F, T, T, F, T]
+  datas.insert("A".to_string(), NumArray::from(vec![-5.0, 10.0, 4.0, -3.0, 8.0]));
+  datas.insert("B".to_string(), NumArray::from(vec![2.0, 5.0, 1.0, -1.0, 2.0]));
+
+  let params = HashMap::new();
+  let mut rt = MRuntime::new(Context::default());
+  let lines = rt.execute(code, &datas, &params)?;
+
+  assert_eq!(lines.len(), 7);
+  // COND: [0.0, 1.0, 1.0, 0.0, 1.0]
+  assert_eq!(lines[0].name, "cond");
+  assert_eq!(lines[0].data, vec![0.0, 1.0, 1.0, 0.0, 1.0]);
+
+  // V_ALL (window 2): [F, F, T, F, F] -> [0.0, 0.0, 1.0, 0.0, 0.0]
+  assert_eq!(lines[1].name, "v_all");
+  assert_eq!(lines[1].data, vec![0.0, 0.0, 1.0, 0.0, 0.0]);
+
+  // V_ANY (window 2): [F, T, T, T, T] -> [0.0, 1.0, 1.0, 1.0, 1.0]
+  assert_eq!(lines[2].name, "v_any");
+  assert_eq!(lines[2].data, vec![0.0, 1.0, 1.0, 1.0, 1.0]);
+
+  // V_EXIST (window 2): [0.0, 1.0, 1.0, 1.0, 1.0]
+  assert_eq!(lines[3].name, "v_exist");
+  assert_eq!(lines[3].data, vec![0.0, 1.0, 1.0, 1.0, 1.0]);
+
+  // V_BACKSET (periods 2): COND=[F, T, T, F, T] -> [T, T, T, T, T] (since 1->0,1; 2->1,2; 4->3,4) -> [1.0, 1.0, 1.0, 1.0, 1.0]
+  assert_eq!(lines[4].name, "v_backset");
+  assert_eq!(lines[4].data, vec![1.0, 1.0, 1.0, 1.0, 1.0]);
+
+  // V_FILTER (periods 1): COND=[F, T, T, F, T] -> [F, T, F, F, T] -> [0.0, 1.0, 0.0, 0.0, 1.0]
+  assert_eq!(lines[5].name, "v_filter");
+  assert_eq!(lines[5].data, vec![0.0, 1.0, 0.0, 0.0, 1.0]);
+
+  // V_LAST: COND=[F, T, T, F, T] -> [0.0, 1.0, 2.0, 0.0, 1.0]
+  assert_eq!(lines[6].name, "v_last");
+  assert_eq!(lines[6].data, vec![0.0, 1.0, 2.0, 0.0, 1.0]);
+
+  Ok(())
+}
+
+

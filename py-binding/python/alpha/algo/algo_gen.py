@@ -43,6 +43,25 @@ def ABS[A: np.ndarray | list[np.ndarray]](
     _algo.abs(r, input)
     return r
 
+def ALL[A: np.ndarray | list[np.ndarray]](
+  condition: A, periods: int
+) -> A:
+  """
+  Check if condition is always true within moving window of `periods` (or cumulative if `periods` is 0)
+  
+  ALL(cond, periods)
+  """
+  if isinstance(condition, list):
+    r = [np.empty_like(x, dtype=bool) for x in condition]
+    condition = [x.astype(bool) for x in condition]
+    _algo.all(r, condition, periods)
+    return r
+  else:
+    r = np.empty_like(condition, dtype=bool)
+    condition = condition.astype(bool)
+    _algo.all(r, condition, periods)
+    return r
+
 def ALPHA[A: np.ndarray | list[np.ndarray]](
   input: A, benchmark: A, periods: int
 ) -> A:
@@ -67,6 +86,25 @@ def ALPHA[A: np.ndarray | list[np.ndarray]](
     _algo.alpha(r, input, benchmark, periods)
     return r
 
+def ANY[A: np.ndarray | list[np.ndarray]](
+  condition: A, periods: int
+) -> A:
+  """
+  Check if condition is true at least once within moving window of `periods` (or cumulative if `periods` is 0)
+  
+  ANY(cond, periods)
+  """
+  if isinstance(condition, list):
+    r = [np.empty_like(x, dtype=bool) for x in condition]
+    condition = [x.astype(bool) for x in condition]
+    _algo.any(r, condition, periods)
+    return r
+  else:
+    r = np.empty_like(condition, dtype=bool)
+    condition = condition.astype(bool)
+    _algo.any(r, condition, periods)
+    return r
+
 def BACKFILL[A: np.ndarray | list[np.ndarray]](
   input: A
 ) -> A:
@@ -85,6 +123,25 @@ def BACKFILL[A: np.ndarray | list[np.ndarray]](
     input = _to_f64(input)
     r = np.empty_like(input)
     _algo.backfill(r, input)
+    return r
+
+def BACKSET[A: np.ndarray | list[np.ndarray]](
+  condition: A, periods: int
+) -> A:
+  """
+  If condition is true, set current position and previous `periods - 1` periods (total `periods` bars) to true
+  
+  BACKSET(cond, periods)
+  """
+  if isinstance(condition, list):
+    r = [np.empty_like(x, dtype=bool) for x in condition]
+    condition = [x.astype(bool) for x in condition]
+    _algo.backset(r, condition, periods)
+    return r
+  else:
+    r = np.empty_like(condition, dtype=bool)
+    condition = condition.astype(bool)
+    _algo.backset(r, condition, periods)
     return r
 
 def BARSLAST[A: np.ndarray | list[np.ndarray]](
@@ -485,6 +542,25 @@ def ENTROPY[A: np.ndarray | list[np.ndarray]](
     _algo.entropy(r, input, periods, bins)
     return r
 
+def FILTER[A: np.ndarray | list[np.ndarray]](
+  condition: A, periods: int
+) -> A:
+  """
+  Filter consecutive signals: once condition is true, set subsequent `periods` periods to false
+  
+  FILTER(cond, periods)
+  """
+  if isinstance(condition, list):
+    r = [np.empty_like(x, dtype=bool) for x in condition]
+    condition = [x.astype(bool) for x in condition]
+    _algo.filter(r, condition, periods)
+    return r
+  else:
+    r = np.empty_like(condition, dtype=bool)
+    condition = condition.astype(bool)
+    _algo.filter(r, condition, periods)
+    return r
+
 def FRET[A: np.ndarray | list[np.ndarray]](
   open: A, close: A, is_calc: A, delay: int, periods: int
 ) -> A:
@@ -731,6 +807,25 @@ def KURTOSIS[A: np.ndarray | list[np.ndarray]](
     input = _to_f64(input)
     r = np.empty_like(input)
     _algo.kurtosis(r, input, periods)
+    return r
+
+def LAST[A: np.ndarray | list[np.ndarray]](
+  condition: A
+) -> A:
+  """
+  Count consecutive periods where condition is true up to the current bar
+  
+  LAST(cond)
+  """
+  if isinstance(condition, list):
+    r = [np.empty_like(x, dtype=float) for x in condition]
+    condition = [x.astype(bool) for x in condition]
+    _algo.last(r, condition)
+    return r
+  else:
+    r = np.empty_like(condition, dtype=float)
+    condition = condition.astype(bool)
+    _algo.last(r, condition)
     return r
 
 def LLV[A: np.ndarray | list[np.ndarray]](

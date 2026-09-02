@@ -318,6 +318,272 @@ pub fn ta_count_v<NumT: Float + Send + Sync>(
   Ok(())
 }
 
+/// Check if condition is always true within moving window of `periods` (or cumulative if `periods` is 0)
+///
+/// ALL(cond, periods)
+pub fn ta_all(
+  ctx: &Context,
+  r: &mut [bool],
+  condition: &[bool],
+  periods: usize,
+) -> Result<(), Error> {
+  if r.len() != condition.len() {
+    return Err(Error::LengthMismatch(r.len(), condition.len()));
+  }
+
+  r.par_chunks_mut(ctx.chunk_size(r.len()))
+    .zip(condition.par_chunks(ctx.chunk_size(condition.len())))
+    .for_each(|(r, x)| {
+      let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
+      r.fill(false);
+
+      if periods == 0 {
+        let mut all_true = true;
+        for i in 0..start {
+          if !x[i] {
+            all_true = false;
+          }
+        }
+        for i in start..end {
+          if !x[i] {
+            all_true = false;
+          }
+          r[i] = all_true;
+        }
+      } else {
+        let mut false_count = 0;
+        let pre_start = if start >= periods { start - periods } else { 0 };
+        for i in pre_start..start {
+          if !x[i] {
+            false_count += 1;
+          }
+        }
+
+        for i in start..end {
+          if !x[i] {
+            false_count += 1;
+          }
+
+          if i >= periods {
+            let old = x[i - periods];
+            if !old {
+              false_count -= 1;
+            }
+          }
+
+          if ctx.is_strictly_cycle() {
+            if i >= periods - 1 && false_count == 0 {
+              r[i] = true;
+            }
+          } else if false_count == 0 {
+            r[i] = true;
+          }
+        }
+      }
+    });
+
+  Ok(())
+}
+
+/// Check if condition is true at least once within moving window of `periods` (or cumulative if `periods` is 0)
+///
+/// ANY(cond, periods)
+pub fn ta_any(
+  ctx: &Context,
+  r: &mut [bool],
+  condition: &[bool],
+  periods: usize,
+) -> Result<(), Error> {
+  if r.len() != condition.len() {
+    return Err(Error::LengthMismatch(r.len(), condition.len()));
+  }
+
+  r.par_chunks_mut(ctx.chunk_size(r.len()))
+    .zip(condition.par_chunks(ctx.chunk_size(condition.len())))
+    .for_each(|(r, x)| {
+      let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
+      r.fill(false);
+
+      if periods == 0 {
+        let mut any_true = false;
+        for i in 0..start {
+          if x[i] {
+            any_true = true;
+          }
+        }
+        for i in start..end {
+          if x[i] {
+            any_true = true;
+          }
+          r[i] = any_true;
+        }
+      } else {
+        let mut true_count = 0;
+        let pre_start = if start >= periods { start - periods } else { 0 };
+        for i in pre_start..start {
+          if x[i] {
+            true_count += 1;
+          }
+        }
+
+        for i in start..end {
+          if x[i] {
+            true_count += 1;
+          }
+
+          if i >= periods {
+            let old = x[i - periods];
+            if old {
+              true_count -= 1;
+            }
+          }
+
+          if ctx.is_strictly_cycle() {
+            if i >= periods - 1 && true_count > 0 {
+              r[i] = true;
+            }
+          } else if true_count > 0 {
+            r[i] = true;
+          }
+        }
+      }
+    });
+
+  Ok(())
+}
+
+/// If condition is true, set current position and previous `periods - 1` periods (total `periods` bars) to true
+///
+/// BACKSET(cond, periods)
+pub fn ta_backset(
+  ctx: &Context,
+  r: &mut [bool],
+  condition: &[bool],
+  periods: usize,
+) -> Result<(), Error> {
+  if r.len() != condition.len() {
+    return Err(Error::LengthMismatch(r.len(), condition.len()));
+  }
+
+  if periods == 0 {
+    r.fill(false);
+    return Ok(());
+  }
+
+  r.par_chunks_mut(ctx.chunk_size(r.len()))
+    .zip(condition.par_chunks(ctx.chunk_size(condition.len())))
+    .for_each(|(r, x)| {
+      let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
+      r.fill(false);
+
+      if end <= start {
+        return;
+      }
+
+      let mut remaining_backset = 0;
+      for i in (start..end).rev() {
+        if x[i] {
+          remaining_backset = remaining_backset.max(periods);
+        }
+        if remaining_backset > 0 {
+          r[i] = true;
+          remaining_backset -= 1;
+        }
+      }
+    });
+
+  Ok(())
+}
+
+/// Filter consecutive signals: once condition is true, set subsequent `periods` periods to false
+///
+/// FILTER(cond, periods)
+pub fn ta_filter(
+  ctx: &Context,
+  r: &mut [bool],
+  condition: &[bool],
+  periods: usize,
+) -> Result<(), Error> {
+  if r.len() != condition.len() {
+    return Err(Error::LengthMismatch(r.len(), condition.len()));
+  }
+
+  r.par_chunks_mut(ctx.chunk_size(r.len()))
+    .zip(condition.par_chunks(ctx.chunk_size(condition.len())))
+    .for_each(|(r, x)| {
+      let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
+      r.fill(false);
+
+      let mut cool_down = 0;
+      for i in 0..start {
+        if cool_down > 0 {
+          cool_down -= 1;
+        } else if x[i] {
+          cool_down = if periods == 0 { usize::MAX } else { periods };
+        }
+      }
+
+      for i in start..end {
+        if cool_down > 0 {
+          r[i] = false;
+          cool_down -= 1;
+        } else if x[i] {
+          r[i] = true;
+          cool_down = if periods == 0 { usize::MAX } else { periods };
+        } else {
+          r[i] = false;
+        }
+      }
+    });
+
+  Ok(())
+}
+
+/// Count consecutive periods where condition is true up to the current bar
+///
+/// LAST(cond)
+pub fn ta_last<NumT: Float + Send + Sync>(
+  ctx: &Context,
+  r: &mut [NumT],
+  condition: &[bool],
+) -> Result<(), Error> {
+  if r.len() != condition.len() {
+    return Err(Error::LengthMismatch(r.len(), condition.len()));
+  }
+
+  r.par_chunks_mut(ctx.chunk_size(r.len()))
+    .zip(condition.par_chunks(ctx.chunk_size(condition.len())))
+    .for_each(|(r, x)| {
+      let start = ctx.start(r.len());
+      let end = ctx.end(r.len());
+      r.fill(NumT::nan());
+
+      let mut count = 0;
+      for i in 0..start {
+        if x[i] {
+          count += 1;
+        } else {
+          count = 0;
+        }
+      }
+
+      for i in start..end {
+        if x[i] {
+          count += 1;
+        } else {
+          count = 0;
+        }
+        r[i] = NumT::from(count).unwrap();
+      }
+    });
+
+  Ok(())
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -422,5 +688,101 @@ mod tests {
     let ctx = Context::new(0, 0, 0);
     ta_count_v(&ctx, &mut r, &input, &periods).unwrap();
     assert_vec_eq_nan(&r, &vec![1.0, 1.0, 2.0, 2.0, 2.0]);
+  }
+
+  #[test]
+  fn test_ta_all() {
+    let input = vec![true, true, true, false, true, true];
+    let mut r = vec![false; input.len()];
+    let ctx = Context::new(0, 0, 0);
+
+    // Window = 3
+    // i=0: [T] -> T
+    // i=1: [T,T] -> T
+    // i=2: [T,T,T] -> T
+    // i=3: [T,T,F] -> F
+    // i=4: [T,F,T] -> F
+    // i=5: [F,T,T] -> F
+    ta_all(&ctx, &mut r, &input, 3).unwrap();
+    assert_eq!(r, vec![true, true, true, false, false, false]);
+
+    // Cumulative (periods = 0)
+    ta_all(&ctx, &mut r, &input, 0).unwrap();
+    assert_eq!(r, vec![true, true, true, false, false, false]);
+
+    // strictly cycle
+    let ctx_strict = Context::new(0, 0, FLAG_STRICTLY_CYCLE);
+    ta_all(&ctx_strict, &mut r, &input, 3).unwrap();
+    assert_eq!(r, vec![false, false, true, false, false, false]);
+  }
+
+  #[test]
+  fn test_ta_any() {
+    let input = vec![false, false, true, false, false];
+    let mut r = vec![false; input.len()];
+    let ctx = Context::new(0, 0, 0);
+
+    // Window = 2
+    // i=0: [F] -> F
+    // i=1: [F,F] -> F
+    // i=2: [F,T] -> T
+    // i=3: [T,F] -> T
+    // i=4: [F,F] -> F
+    ta_any(&ctx, &mut r, &input, 2).unwrap();
+    assert_eq!(r, vec![false, false, true, true, false]);
+
+    // Cumulative (periods = 0)
+    ta_any(&ctx, &mut r, &input, 0).unwrap();
+    assert_eq!(r, vec![false, false, true, true, true]);
+  }
+
+  #[test]
+  fn test_ta_backset() {
+    let input = vec![false, false, true, false, false];
+    let mut r = vec![false; input.len()];
+    let ctx = Context::new(0, 0, 0);
+
+    // periods = 3 -> sets index 2, 1, 0 to true
+    ta_backset(&ctx, &mut r, &input, 3).unwrap();
+    assert_eq!(r, vec![true, true, true, false, false]);
+
+    // periods = 2 on multiple signals
+    let input2 = vec![true, false, false, true, false];
+    let mut r2 = vec![false; input2.len()];
+    ta_backset(&ctx, &mut r2, &input2, 2).unwrap();
+    // i=0 (T) -> [0]
+    // i=3 (T) -> [2, 3]
+    assert_eq!(r2, vec![true, false, true, true, false]);
+  }
+
+  #[test]
+  fn test_ta_filter() {
+    let input = vec![true, true, false, true, false, true];
+    let mut r = vec![false; input.len()];
+    let ctx = Context::new(0, 0, 0);
+
+    // periods = 2
+    // i=0: T -> r[0]=T, cool_down=2
+    // i=1: T -> cool_down(2)>0 -> r[1]=F, cool_down=1
+    // i=2: F -> cool_down(1)>0 -> r[2]=F, cool_down=0
+    // i=3: T -> r[3]=T, cool_down=2
+    // i=4: F -> cool_down(2)>0 -> r[4]=F, cool_down=1
+    // i=5: T -> cool_down(1)>0 -> r[5]=F, cool_down=0
+    ta_filter(&ctx, &mut r, &input, 2).unwrap();
+    assert_eq!(r, vec![true, false, false, true, false, false]);
+
+    // periods = 0 (filter all subsequent)
+    ta_filter(&ctx, &mut r, &input, 0).unwrap();
+    assert_eq!(r, vec![true, false, false, false, false, false]);
+  }
+
+  #[test]
+  fn test_ta_last() {
+    let input = vec![false, true, true, false, true, true, true];
+    let mut r = vec![0.0; input.len()];
+    let ctx = Context::new(0, 0, 0);
+
+    ta_last(&ctx, &mut r, &input).unwrap();
+    assert_vec_eq_nan(&r, &vec![0.0, 1.0, 2.0, 0.0, 1.0, 2.0, 3.0]);
   }
 }

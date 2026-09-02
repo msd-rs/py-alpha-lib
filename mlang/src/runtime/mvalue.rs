@@ -47,6 +47,11 @@ impl MValue {
     match self {
       MValue::NumArray(arr) => Ok(arr.clone()),
       MValue::Num(n) => Ok(NumArray::from(vec![*n; len])),
+      MValue::BoolArray(arr) => {
+        let res = arr.iter().map(|&x| if x { 1.0 } else { 0.0 }).collect::<Vec<_>>();
+        Ok(NumArray::from(res))
+      }
+      MValue::Bool(b) => Ok(NumArray::from(vec![if *b { 1.0 } else { 0.0 }; len])),
       _ => Err(anyhow!("Cannot convert/promote to NumArray: {:?}", self)),
     }
   }

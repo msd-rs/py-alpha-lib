@@ -720,6 +720,33 @@ macro_rules! reg_ta_1_arr_1_usize {
   };
 }
 
+macro_rules! reg_ta_1_bool_arr_1_usize_to_bool {
+  ($rt:expr, $name:ident, $ta_fn:ident) => {
+    $rt.register_func(stringify!($name), |ctx, args, _lines| {
+      if args.len() != 2 {
+        return Err(anyhow!("{} expects 2 arguments", stringify!($name)));
+      }
+      let default_len = match &args[0] {
+        MValue::BoolArray(arr) => arr.len(),
+        _ => 1,
+      };
+      let input = args[0].to_bool_array(default_len)?;
+      let periods = match &args[1] {
+        MValue::Num(n) => *n as usize,
+        _ => {
+          return Err(anyhow!(
+            "{} second argument must be a number",
+            stringify!($name)
+          ));
+        }
+      };
+      let mut r = vec![false; input.len()];
+      $ta_fn(ctx, &mut r, &input, periods)?;
+      Ok(MValue::BoolArray(BoolArray::from(r)))
+    });
+  };
+}
+
 macro_rules! reg_ta_1_bool_arr_1_usize {
   ($rt:expr, $name:ident, $ta_fn:ident) => {
     $rt.register_func(stringify!($name), |ctx, args, _lines| {
@@ -1116,8 +1143,11 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
   use alpha_algo::*;
 
   reg_ta_1_arr!(rt, ABS, ta_abs);
+  reg_ta_1_bool_arr_1_usize_to_bool!(rt, ALL, ta_all);
   reg_ta_2_arr_1_usize!(rt, ALPHA, ta_alpha);
+  reg_ta_1_bool_arr_1_usize_to_bool!(rt, ANY, ta_any);
   reg_ta_1_arr!(rt, BACKFILL, ta_backfill);
+  reg_ta_1_bool_arr_1_usize_to_bool!(rt, BACKSET, ta_backset);
   reg_ta_1_bool_arr!(rt, BARSLAST, ta_barslast);
   reg_ta_1_bool_arr!(rt, BARSSINCE, ta_barssince);
   reg_ta_2_arr_1_usize!(rt, BETA, ta_beta);
@@ -1191,6 +1221,8 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
   reg_ta_1_arr_1_f64!(rt, DMA, ta_dma);
   reg_ta_1_arr_1_usize!(rt, EMA, ta_ema);
   reg_ta_1_arr_2_usize!(rt, ENTROPY, ta_entropy);
+  reg_ta_1_bool_arr_1_usize_to_bool!(rt, EXIST, ta_any);
+  reg_ta_1_bool_arr_1_usize_to_bool!(rt, FILTER, ta_filter);
   reg_ta_open_close_calc_delay_periods!(rt, FRET, ta_fret);
   rt.register_func("FW_SPLIT", |ctx, args, _lines| {
     if args.len() != 5 {
@@ -1256,6 +1288,7 @@ pub fn register_ta_functions(rt: &mut MRuntime) {
   reg_ta_1_arr_1_usize!(rt, HHVBARS, ta_hhvbars);
   reg_ta_1_arr_1_usize!(rt, INTERCEPT, ta_intercept);
   reg_ta_1_arr_1_usize!(rt, KURTOSIS, ta_kurtosis);
+  reg_ta_1_bool_arr!(rt, LAST, ta_last);
   reg_ta_1_arr_1_usize!(rt, LLV, ta_llv);
   reg_ta_1_arr_1_usize!(rt, LLVBARS, ta_llvbars);
   reg_ta_2_arr_1_usize_to_bool!(rt, LONGCROSS, ta_longcross);

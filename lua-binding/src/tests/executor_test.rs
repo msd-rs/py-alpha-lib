@@ -169,4 +169,50 @@ fn test_ta_elementwise() -> Result<()> {
   Ok(())
 }
 
+#[test]
+fn test_ta_all_any_backset_filter_last() -> Result<()> {
+  let code = r#"
+    COND : A > B;
+    V_ALL : ALL(COND, 2);
+    V_ANY : ANY(COND, 2);
+    V_BACKSET : BACKSET(COND, 2);
+    V_FILTER : FILTER(COND, 1);
+    V_LAST : LAST(COND);
+  "#;
+  let executor = LuaExecutor::new()?;
+  let mut datas = HashMap::new();
+  datas.insert(
+    "A".to_string(),
+    NumArray::from(vec![-5.0, 10.0, 4.0, -3.0, 8.0]),
+  );
+  datas.insert(
+    "B".to_string(),
+    NumArray::from(vec![2.0, 5.0, 1.0, -1.0, 2.0]),
+  );
+  let params = HashMap::new();
+  let lines = executor.execute_mlang(code, datas, params)?;
+
+  assert_eq!(lines.len(), 6);
+  assert_eq!(lines[0].name, "cond");
+  assert_eq!(lines[0].data, vec![0.0, 1.0, 1.0, 0.0, 1.0]);
+
+  assert_eq!(lines[1].name, "v_all");
+  assert_eq!(lines[1].data, vec![0.0, 0.0, 1.0, 0.0, 0.0]);
+
+  assert_eq!(lines[2].name, "v_any");
+  assert_eq!(lines[2].data, vec![0.0, 1.0, 1.0, 1.0, 1.0]);
+
+  assert_eq!(lines[3].name, "v_backset");
+  assert_eq!(lines[3].data, vec![1.0, 1.0, 1.0, 1.0, 1.0]);
+
+  assert_eq!(lines[4].name, "v_filter");
+  assert_eq!(lines[4].data, vec![0.0, 1.0, 0.0, 0.0, 1.0]);
+
+  assert_eq!(lines[5].name, "v_last");
+  assert_eq!(lines[5].data, vec![0.0, 1.0, 2.0, 0.0, 1.0]);
+
+  Ok(())
+}
+
+
 

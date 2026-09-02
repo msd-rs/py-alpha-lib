@@ -63,10 +63,18 @@ impl FromLua for Line {
           }
           _ => {
             let color = t.get("color").unwrap_or_default();
+            let data: Vec<f64> = if let Ok(num_arr) = data.take::<NumArray>() {
+              num_arr.into()
+            } else if let Ok(bool_arr) = data.take::<BoolArray>() {
+              let b: Vec<bool> = bool_arr.into();
+              b.into_iter().map(|x| if x { 1.0 } else { 0.0 }).collect()
+            } else {
+              return Err(LuaError::runtime("Expected NumArray or BoolArray for Line.data"));
+            };
             Ok(Line {
               kind,
               name,
-              data: data.take::<NumArray>()?.into(),
+              data,
               color,
               ..Default::default()
             })

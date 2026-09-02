@@ -8,6 +8,14 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       })?,
     )?;
     lua.globals().set(
+      "ALL",
+      lua.create_function(|lua, (condition, periods): (BoolArray, usize)| {
+        let mut r = vec![false; condition.len()];
+        ta_all(&ctx(lua), &mut r, &condition, periods)?;
+        Ok(BoolArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
       "ALPHA",
       lua.create_function(|lua, (input, benchmark, periods): (NumArray, NumArray, usize)| {
         let mut r = vec![0.0; input.len()];
@@ -16,11 +24,27 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       })?,
     )?;
     lua.globals().set(
+      "ANY",
+      lua.create_function(|lua, (condition, periods): (BoolArray, usize)| {
+        let mut r = vec![false; condition.len()];
+        ta_any(&ctx(lua), &mut r, &condition, periods)?;
+        Ok(BoolArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
       "BACKFILL",
       lua.create_function(|lua, (input,): (NumArray,)| {
         let mut r = vec![0.0; input.len()];
         ta_backfill::<f64>(&ctx(lua), &mut r, &input)?;
         Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
+      "BACKSET",
+      lua.create_function(|lua, (condition, periods): (BoolArray, usize)| {
+        let mut r = vec![false; condition.len()];
+        ta_backset(&ctx(lua), &mut r, &condition, periods)?;
+        Ok(BoolArray::from(r))
       })?,
     )?;
     lua.globals().set(
@@ -186,6 +210,14 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       })?,
     )?;
     lua.globals().set(
+      "FILTER",
+      lua.create_function(|lua, (condition, periods): (BoolArray, usize)| {
+        let mut r = vec![false; condition.len()];
+        ta_filter(&ctx(lua), &mut r, &condition, periods)?;
+        Ok(BoolArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
       "FRET",
       lua.create_function(|lua, (open, close, is_calc, delay, periods): (NumArray, NumArray, NumArray, usize, usize)| {
         let mut r = vec![0.0; open.len()];
@@ -272,6 +304,14 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       lua.create_function(|lua, (input, periods): (NumArray, usize)| {
         let mut r = vec![0.0; input.len()];
         ta_kurtosis::<f64>(&ctx(lua), &mut r, &input, periods)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
+      "LAST",
+      lua.create_function(|lua, (condition,): (BoolArray,)| {
+        let mut r = vec![0.0; condition.len()];
+        ta_last::<f64>(&ctx(lua), &mut r, &condition)?;
         Ok(NumArray::from(r))
       })?,
     )?;

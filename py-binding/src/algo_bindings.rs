@@ -103,6 +103,64 @@
       Err(PyValueError::new_err("invalid input"))
     }
   }
+  /// Check if condition is always true within moving window of `periods` (or cumulative if `periods` is 0)
+  #[pyfunction]
+  fn all<'py>(
+    py: Python<'py>,
+    r: &'py Bound<'_, PyAny>,
+    condition: &'py Bound<'_, PyAny>,
+    periods: usize,
+  ) -> PyResult<()> {
+    // 1. get context
+    #[allow(unused_mut)]
+    let mut ctx = ctx(py);
+    // 2. check input type and do dispatch
+    if let Some((mut r, condition)) = r
+      .extract::<PyReadwriteArray1<'py, bool>>()
+      .ok()
+      .zip(condition.extract::<PyReadonlyArray1<'py, bool>>().ok())
+    {
+      let mut r = r.as_array_mut();
+      let r = r
+        .as_slice_mut()
+        .ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+      let condition = condition.as_array();
+      let condition = condition
+        .as_slice()
+        .ok_or(PyValueError::new_err("failed to get slice"))?;
+      ta_all(&ctx, r, condition, periods).map_err(|e| e.into())
+    } else if let Some((r, condition)) = r.cast::<PyList>().ok().zip(condition.cast::<PyList>().ok()) {
+      ctx._groups = 1;
+      if r.len() != condition.len() {
+        return Err(PyValueError::new_err("length mismatch"));
+      }
+      if let Some((mut r, condition)) = r
+        .extract::<Vec<PyReadwriteArray1<'py, bool>>>()
+        .ok()
+        .zip(condition.extract::<Vec<PyReadonlyArray1<'py, bool>>>().ok())
+      {
+        let r = r.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();
+        let condition = condition.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let mut _r = vec![];
+        r.into_par_iter()
+          .zip(condition.into_par_iter())
+          .map(|(mut out, input)| {
+            let r = out.as_slice_mut();
+            let condition = input.as_slice();
+            if let Some((r, condition)) = r.zip(condition) {
+              ta_all(&ctx, r, condition, periods).map_err(|e| e.into())
+            } else {
+              Err(PyValueError::new_err("invalid input"))
+            }
+          })
+          .collect_into_vec(&mut _r);
+        match _r.into_iter().find(|x| x.is_err()) {
+          Some(e) => e,
+          None => Ok(()),
+        }
+      } else { Err(PyValueError::new_err("invalid input list (expected bool, bool)")) }
+    } else { Err(PyValueError::new_err("invalid input (expected bool, bool)")) }
+  }
   /// Rolling Jensen's Alpha of asset returns against benchmark returns.
   #[pyfunction]
   fn alpha<'py>(
@@ -175,6 +233,64 @@
         match _r.into_iter().find(|x| x.is_err()) { Some(e) => e, None => Ok(()) }
       } else { Err(PyValueError::new_err("invalid input list")) }
     } else { Err(PyValueError::new_err("invalid input")) }
+  }
+  /// Check if condition is true at least once within moving window of `periods` (or cumulative if `periods` is 0)
+  #[pyfunction]
+  fn any<'py>(
+    py: Python<'py>,
+    r: &'py Bound<'_, PyAny>,
+    condition: &'py Bound<'_, PyAny>,
+    periods: usize,
+  ) -> PyResult<()> {
+    // 1. get context
+    #[allow(unused_mut)]
+    let mut ctx = ctx(py);
+    // 2. check input type and do dispatch
+    if let Some((mut r, condition)) = r
+      .extract::<PyReadwriteArray1<'py, bool>>()
+      .ok()
+      .zip(condition.extract::<PyReadonlyArray1<'py, bool>>().ok())
+    {
+      let mut r = r.as_array_mut();
+      let r = r
+        .as_slice_mut()
+        .ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+      let condition = condition.as_array();
+      let condition = condition
+        .as_slice()
+        .ok_or(PyValueError::new_err("failed to get slice"))?;
+      ta_any(&ctx, r, condition, periods).map_err(|e| e.into())
+    } else if let Some((r, condition)) = r.cast::<PyList>().ok().zip(condition.cast::<PyList>().ok()) {
+      ctx._groups = 1;
+      if r.len() != condition.len() {
+        return Err(PyValueError::new_err("length mismatch"));
+      }
+      if let Some((mut r, condition)) = r
+        .extract::<Vec<PyReadwriteArray1<'py, bool>>>()
+        .ok()
+        .zip(condition.extract::<Vec<PyReadonlyArray1<'py, bool>>>().ok())
+      {
+        let r = r.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();
+        let condition = condition.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let mut _r = vec![];
+        r.into_par_iter()
+          .zip(condition.into_par_iter())
+          .map(|(mut out, input)| {
+            let r = out.as_slice_mut();
+            let condition = input.as_slice();
+            if let Some((r, condition)) = r.zip(condition) {
+              ta_any(&ctx, r, condition, periods).map_err(|e| e.into())
+            } else {
+              Err(PyValueError::new_err("invalid input"))
+            }
+          })
+          .collect_into_vec(&mut _r);
+        match _r.into_iter().find(|x| x.is_err()) {
+          Some(e) => e,
+          None => Ok(()),
+        }
+      } else { Err(PyValueError::new_err("invalid input list (expected bool, bool)")) }
+    } else { Err(PyValueError::new_err("invalid input (expected bool, bool)")) }
   }
   /// Forward-fill NaN values with the last valid observation
   #[pyfunction]
@@ -280,6 +396,64 @@
     } else {
       Err(PyValueError::new_err("invalid input"))
     }
+  }
+  /// If condition is true, set current position and previous `periods - 1` periods (total `periods` bars) to true
+  #[pyfunction]
+  fn backset<'py>(
+    py: Python<'py>,
+    r: &'py Bound<'_, PyAny>,
+    condition: &'py Bound<'_, PyAny>,
+    periods: usize,
+  ) -> PyResult<()> {
+    // 1. get context
+    #[allow(unused_mut)]
+    let mut ctx = ctx(py);
+    // 2. check input type and do dispatch
+    if let Some((mut r, condition)) = r
+      .extract::<PyReadwriteArray1<'py, bool>>()
+      .ok()
+      .zip(condition.extract::<PyReadonlyArray1<'py, bool>>().ok())
+    {
+      let mut r = r.as_array_mut();
+      let r = r
+        .as_slice_mut()
+        .ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+      let condition = condition.as_array();
+      let condition = condition
+        .as_slice()
+        .ok_or(PyValueError::new_err("failed to get slice"))?;
+      ta_backset(&ctx, r, condition, periods).map_err(|e| e.into())
+    } else if let Some((r, condition)) = r.cast::<PyList>().ok().zip(condition.cast::<PyList>().ok()) {
+      ctx._groups = 1;
+      if r.len() != condition.len() {
+        return Err(PyValueError::new_err("length mismatch"));
+      }
+      if let Some((mut r, condition)) = r
+        .extract::<Vec<PyReadwriteArray1<'py, bool>>>()
+        .ok()
+        .zip(condition.extract::<Vec<PyReadonlyArray1<'py, bool>>>().ok())
+      {
+        let r = r.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();
+        let condition = condition.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let mut _r = vec![];
+        r.into_par_iter()
+          .zip(condition.into_par_iter())
+          .map(|(mut out, input)| {
+            let r = out.as_slice_mut();
+            let condition = input.as_slice();
+            if let Some((r, condition)) = r.zip(condition) {
+              ta_backset(&ctx, r, condition, periods).map_err(|e| e.into())
+            } else {
+              Err(PyValueError::new_err("invalid input"))
+            }
+          })
+          .collect_into_vec(&mut _r);
+        match _r.into_iter().find(|x| x.is_err()) {
+          Some(e) => e,
+          None => Ok(()),
+        }
+      } else { Err(PyValueError::new_err("invalid input list (expected bool, bool)")) }
+    } else { Err(PyValueError::new_err("invalid input (expected bool, bool)")) }
   }
   /// Calculate number of bars since last condition true
   #[pyfunction]
@@ -1904,6 +2078,64 @@
       Err(PyValueError::new_err("invalid input"))
     }
   }
+  /// Filter consecutive signals: once condition is true, set subsequent `periods` periods to false
+  #[pyfunction]
+  fn filter<'py>(
+    py: Python<'py>,
+    r: &'py Bound<'_, PyAny>,
+    condition: &'py Bound<'_, PyAny>,
+    periods: usize,
+  ) -> PyResult<()> {
+    // 1. get context
+    #[allow(unused_mut)]
+    let mut ctx = ctx(py);
+    // 2. check input type and do dispatch
+    if let Some((mut r, condition)) = r
+      .extract::<PyReadwriteArray1<'py, bool>>()
+      .ok()
+      .zip(condition.extract::<PyReadonlyArray1<'py, bool>>().ok())
+    {
+      let mut r = r.as_array_mut();
+      let r = r
+        .as_slice_mut()
+        .ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+      let condition = condition.as_array();
+      let condition = condition
+        .as_slice()
+        .ok_or(PyValueError::new_err("failed to get slice"))?;
+      ta_filter(&ctx, r, condition, periods).map_err(|e| e.into())
+    } else if let Some((r, condition)) = r.cast::<PyList>().ok().zip(condition.cast::<PyList>().ok()) {
+      ctx._groups = 1;
+      if r.len() != condition.len() {
+        return Err(PyValueError::new_err("length mismatch"));
+      }
+      if let Some((mut r, condition)) = r
+        .extract::<Vec<PyReadwriteArray1<'py, bool>>>()
+        .ok()
+        .zip(condition.extract::<Vec<PyReadonlyArray1<'py, bool>>>().ok())
+      {
+        let r = r.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();
+        let condition = condition.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let mut _r = vec![];
+        r.into_par_iter()
+          .zip(condition.into_par_iter())
+          .map(|(mut out, input)| {
+            let r = out.as_slice_mut();
+            let condition = input.as_slice();
+            if let Some((r, condition)) = r.zip(condition) {
+              ta_filter(&ctx, r, condition, periods).map_err(|e| e.into())
+            } else {
+              Err(PyValueError::new_err("invalid input"))
+            }
+          })
+          .collect_into_vec(&mut _r);
+        match _r.into_iter().find(|x| x.is_err()) {
+          Some(e) => e,
+          None => Ok(()),
+        }
+      } else { Err(PyValueError::new_err("invalid input list (expected bool, bool)")) }
+    } else { Err(PyValueError::new_err("invalid input (expected bool, bool)")) }
+  }
   /// Future Return
   #[pyfunction]
   fn fret<'py>(
@@ -2757,6 +2989,109 @@
             let input = input.as_slice();
             if let Some((r, input)) = r.zip(input) {
               ta_kurtosis(&ctx, r, input, periods).map_err(|e| e.into())
+            } else {
+              Err(PyValueError::new_err("invalid input"))
+            }
+          })
+          .collect_into_vec(&mut _r);
+        match _r.into_iter().find(|x| x.is_err()) {
+          Some(e) => e,
+          None => Ok(()),
+        }
+      } else {
+        Err(PyValueError::new_err("invalid input"))
+      }
+    } else {
+      Err(PyValueError::new_err("invalid input"))
+    }
+  }
+  /// Count consecutive periods where condition is true up to the current bar
+  #[pyfunction]
+  fn last<'py>(
+    py: Python<'py>,
+    r: &'py Bound<'_, PyAny>,
+    condition: &'py Bound<'_, PyAny>,
+  ) -> PyResult<()> {
+    // 1. get context
+    #[allow(unused_mut)]
+    let mut ctx = ctx(py);
+    // 2. check input type and do dispatch
+    if let Some((mut r, condition)) = r
+      .extract::<PyReadwriteArray1<'py, f64>>()
+      .ok()
+      .zip(condition.extract::<PyReadonlyArray1<'py, bool>>().ok())
+    {
+      let mut r = r.as_array_mut();
+      let r = r
+        .as_slice_mut()
+        .ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+      let condition = condition.as_array();
+      let condition = condition
+        .as_slice()
+        .ok_or(PyValueError::new_err("failed to get slice"))?;
+      ta_last(&ctx, r, condition).map_err(|e| e.into())
+    } else if let Some((mut r, condition)) = r
+      .extract::<PyReadwriteArray1<'py, f32>>()
+      .ok()
+      .zip(condition.extract::<PyReadonlyArray1<'py, bool>>().ok())
+    {
+      let mut r = r.as_array_mut();
+      let r = r
+        .as_slice_mut()
+        .ok_or(PyValueError::new_err("invalid input"))?;
+      let condition = condition.as_array();
+      let condition = condition
+        .as_slice()
+        .ok_or(PyValueError::new_err("invalid input"))?;
+      ta_last(&ctx, r, condition).map_err(|e| e.into())
+    } else if let Some((r, condition)) = r.cast::<PyList>().ok().zip(condition.cast::<PyList>().ok()) {
+      // input is list of arrays
+      // each array is a group, ensure groups is set to 1
+      ctx._groups = 1;
+      if r.len() != condition.len() {
+        return Err(PyValueError::new_err("length mismatch"));
+      }
+      // check if each array is f64 array output and bool input
+      if let Some((mut r, condition)) = r
+        .extract::<Vec<PyReadwriteArray1<'py, f64>>>()
+        .ok()
+        .zip(condition.extract::<Vec<PyReadonlyArray1<'py, bool>>>().ok())
+      {
+        let r = r.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();
+        let condition = condition.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let mut _r = vec![];
+        r.into_par_iter()
+          .zip(condition.into_par_iter())
+          .map(|(mut out, input)| {
+            let r = out.as_slice_mut();
+            let condition = input.as_slice();
+            if let Some((r, condition)) = r.zip(condition) {
+              ta_last(&ctx, r, condition).map_err(|e| e.into())
+            } else {
+              Err(PyValueError::new_err("invalid input"))
+            }
+          })
+          .collect_into_vec(&mut _r);
+        match _r.into_iter().find(|x| x.is_err()) {
+          Some(e) => e,
+          None => Ok(()),
+        }
+      // check if each array is f32 array output
+      } else if let Some((mut r, condition)) = r
+        .extract::<Vec<PyReadwriteArray1<'py, f32>>>()
+        .ok()
+        .zip(condition.extract::<Vec<PyReadonlyArray1<'py, bool>>>().ok())
+      {
+        let r = r.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();
+        let condition = condition.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let mut _r = vec![];
+        r.into_par_iter()
+          .zip(condition.into_par_iter())
+          .map(|(mut out, input)| {
+            let r = out.as_slice_mut();
+            let condition = input.as_slice();
+            if let Some((r, condition)) = r.zip(condition) {
+              ta_last(&ctx, r, condition).map_err(|e| e.into())
             } else {
               Err(PyValueError::new_err("invalid input"))
             }
@@ -6062,8 +6397,11 @@
 
 pub fn register_functions(m: &Bound<'_, PyModule>) -> PyResult<()> {
   m.add_function(wrap_pyfunction!(abs, m)?)?;
+  m.add_function(wrap_pyfunction!(all, m)?)?;
   m.add_function(wrap_pyfunction!(alpha, m)?)?;
+  m.add_function(wrap_pyfunction!(any, m)?)?;
   m.add_function(wrap_pyfunction!(backfill, m)?)?;
+  m.add_function(wrap_pyfunction!(backset, m)?)?;
   m.add_function(wrap_pyfunction!(barslast, m)?)?;
   m.add_function(wrap_pyfunction!(barssince, m)?)?;
   m.add_function(wrap_pyfunction!(beta, m)?)?;
@@ -6083,6 +6421,7 @@ pub fn register_functions(m: &Bound<'_, PyModule>) -> PyResult<()> {
   m.add_function(wrap_pyfunction!(dma_v, m)?)?;
   m.add_function(wrap_pyfunction!(ema_v, m)?)?;
   m.add_function(wrap_pyfunction!(entropy, m)?)?;
+  m.add_function(wrap_pyfunction!(filter, m)?)?;
   m.add_function(wrap_pyfunction!(fret, m)?)?;
   m.add_function(wrap_pyfunction!(fw_split, m)?)?;
   m.add_function(wrap_pyfunction!(fw_split_factor, m)?)?;
@@ -6094,6 +6433,7 @@ pub fn register_functions(m: &Bound<'_, PyModule>) -> PyResult<()> {
   m.add_function(wrap_pyfunction!(hhvbars_v, m)?)?;
   m.add_function(wrap_pyfunction!(intercept, m)?)?;
   m.add_function(wrap_pyfunction!(kurtosis, m)?)?;
+  m.add_function(wrap_pyfunction!(last, m)?)?;
   m.add_function(wrap_pyfunction!(llv, m)?)?;
   m.add_function(wrap_pyfunction!(llv_v, m)?)?;
   m.add_function(wrap_pyfunction!(llvbars, m)?)?;

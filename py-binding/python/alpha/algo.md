@@ -3,8 +3,11 @@ List of available functions with python type hints:
 the `np.ndarray` is `ndarray` type in `numpy` package
 
 - ABS(input: np.ndarray[float]): Calculate absolute value of input elements  ABS(x) = |x|
+- ALL(condition: np.ndarray[bool], periods: int): Check if condition is always true within moving window of `periods` (or cumulative if `periods` is 0)  ALL(cond, periods)
 - ALPHA(input: np.ndarray[float], benchmark: np.ndarray[float], periods: int): Rolling Jensen's Alpha of asset returns against benchmark returns.  Alpha = mean(input) - Beta * mean(benchmark) Measures excess return of an asset relative to its expected return given beta.
+- ANY(condition: np.ndarray[bool], periods: int): Check if condition is true at least once within moving window of `periods` (or cumulative if `periods` is 0)  ANY(cond, periods)
 - BACKFILL(input: np.ndarray[float]): Forward-fill NaN values with the last valid observation  Iterates forward through each group; if x[i] is NaN, copies the last valid value. Leading NaNs (before any valid value) remain NaN.
+- BACKSET(condition: np.ndarray[bool], periods: int): If condition is true, set current position and previous `periods - 1` periods (total `periods` bars) to true  BACKSET(cond, periods)
 - BARSLAST(input: np.ndarray[bool]): Calculate number of bars since last condition true
 - BARSSINCE(input: np.ndarray[bool]): Calculate number of bars since first condition true
 - BETA(input: np.ndarray[float], benchmark: np.ndarray[float], periods: int): Rolling Beta coefficient of asset returns against benchmark returns.  Beta = Covariance(input, benchmark) / Variance(benchmark) Measures systematic risk of an asset relative to the market.
@@ -25,6 +28,7 @@ the `np.ndarray` is `ndarray` type in `numpy` package
 - EMA(input: np.ndarray[float], periods: int): Exponential Moving Average (variant of well-known EMA) weight = 2 / (n + 1)
 - EMA_V(input: np.ndarray[float], periods: np.ndarray[int]): Exponential Moving Average with variable periods
 - ENTROPY(input: np.ndarray[float], periods: int, bins: int): Calculate rolling Shannon entropy over a moving window  Discretizes values into `bins` equal-width buckets within the window's [min, max] range, then computes -sum(p * ln(p)) where p is the frequency of each occupied bin. Uses natural log (base e). Requires at least 2 valid values. Single-value windows return 0.
+- FILTER(condition: np.ndarray[bool], periods: int): Filter consecutive signals: once condition is true, set subsequent `periods` periods to false  FILTER(cond, periods)
 - FRET(open: np.ndarray[float], close: np.ndarray[float], is_calc: np.ndarray[float], delay: int, periods: int): Future Return  Calculates the return from the open price of the delayed day (t+delay) to the close price of the future day (t+delay+periods-1). Return = (Close[t+delay+periods-1] - Open[t+delay]) / Open[t+delay]  If n=1, delay=1, it calculates (Close[t+1] - Open[t+1]) / Open[t+1]. If `is_calc[t+delay]` is 0, returns NaN.
 - FW_SPLIT(price: np.ndarray[float], dividend: np.ndarray[float], transfer_shares: np.ndarray[float], right_shares: np.ndarray[float], right_price: np.ndarray[float]): Forward split and dividend adjustment  Adjusts prices forward (from earliest to latest event) using a loop according to arithmetic progression.
 - FW_SPLIT_FACTOR(price: np.ndarray[float], dividend: np.ndarray[float], transfer_shares: np.ndarray[float], right_shares: np.ndarray[float], right_price: np.ndarray[float]): Forward split factor calculation  Calculates forward split factor array according to geometric progression.
@@ -36,6 +40,7 @@ the `np.ndarray` is `ndarray` type in `numpy` package
 - HHVBARS_V(input: np.ndarray[float], periods: np.ndarray[int]): The number of periods that have passed since the array reached its variable `periods` period high
 - INTERCEPT(input: np.ndarray[float], periods: int): Linear Regression Intercept  Calculates the intercept of the linear regression line for a moving window.
 - KURTOSIS(input: np.ndarray[float], periods: int): Calculate rolling sample excess Kurtosis over a moving window  Uses adjusted Fisher formula (matches pandas): kurt = n(n+1)/((n-1)(n-2)(n-3)) * sum(((x-mean)/std)^4) - 3(n-1)^2/((n-2)(n-3)) Requires at least 4 valid values.
+- LAST(condition: np.ndarray[bool]): Count consecutive periods where condition is true up to the current bar  LAST(cond)
 - LLV(input: np.ndarray[float], periods: int): Find lowest value in a preceding `periods` window
 - LLV_V(input: np.ndarray[float], periods: np.ndarray[int]): Find lowest value in a preceding variable `periods` window
 - LLVBARS(input: np.ndarray[float], periods: int): The number of periods that have passed since the array reached its periods period low
