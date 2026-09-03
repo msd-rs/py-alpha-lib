@@ -1,5 +1,34 @@
 # ChangeLog
 
+## [0.3.1] - 2026-09-03
+
+### Added
+
+- **New Elementwise & Conditional Algorithms**:
+  - `ABS`: Calculate element-wise absolute value.
+  - `MAX`: Calculate element-wise maximum of two arrays with `skip_nan` support.
+  - `MIN`: Calculate element-wise minimum of two arrays with `skip_nan` support.
+  - `WHERE` (and `IF` in MLang): Conditional element selection (`a if condition else b`).
+- **New Sequential & Signal Filtering Algorithms**:
+  - `ALL`: Check if a condition is continuously satisfied over the last `N` periods (or cumulative from the start if `N=0`).
+  - `ANY` (and alias `EXIST`): Check if a condition is satisfied at least once over the last `N` periods (or cumulative from the start if `N=0`).
+  - `BACKSET`: Set current and preceding `N-1` periods (total `N` bars) to true when condition is satisfied.
+  - `FILTER`: Suppress consecutive signals for `N` periods following a valid signal (or all subsequent bars if `N=0`).
+  - `LAST`: Count the number of consecutive periods where condition is continuously met up to the current bar.
+- **Vector-Period Algorithm Variants**:
+  - Added variable-period versions supporting dynamic period series: `REF_V`, `MA_V`, `EMA_V`, `SMA_V`, `LWMA_V`, `DMA_V`, `COUNT_V`, `HHV_V`, `HHVBARS_V`, `LLV_V`, and `LLVBARS_V`.
+- **Split Factor Calculation**:
+  - `FW_SPLIT_FACTOR` and `BW_SPLIT_FACTOR` for forward and backward split factor array calculations.
+- **JavaScript / WASM Bindings**:
+  - Added `join_asof` with backward, forward, zero, and NaN fill modes.
+- **MLang Runtime Enhancements**:
+  - Expanded `MValue` and VM support for boolean arrays, logical operations, self-referencing patterns, and seamless conversion between boolean arrays and numeric arrays.
+
+### Fixed
+
+- Fixed `REF` and `REF_V` to fill initial bars before period window with `x[0]` when `!is_strictly_cycle()`.
+- Fixed `EMA` initial state and NaN value propagation.
+- Improved float ordering stability for NaN/Inf handling in ranking (`rank.rs`).
 
 ## [0.3.0] - 2026-06-04
 
