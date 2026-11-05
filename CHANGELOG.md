@@ -1,5 +1,12 @@
 # ChangeLog
 
+## [0.3.2] - 2026-09-03
+
+### Added
+
+- CI: more python version 
+
+
 ## [0.3.1] - 2026-09-03
 
 ### Added

@@ -3,14 +3,14 @@ members = ["alpha-algo", "js-binding", "py-binding", "lua-binding", "mlang"]
 resolver = "3"
 
 [workspace.package]
-version = "0.3.1"
+version = "0.3.2"
 authors = ["ElseJJ"]
 edition = "2024"
 
 [workspace.dependencies]
 log = "0.4"
 num-traits = "0.2"
-numpy = "0.28"
+numpy = "0.30"
 pyo3-log = "0.13"
 rayon = "1.11"
 thiserror = "2"
@@ -18,7 +18,7 @@ anyhow = "1"
 mlua = { version = "0.11", features = ["lua55", "vendored", "anyhow"] }
 
 [workspace.dependencies.pyo3]
-version = "0.28"
+version = "0.30"
 
 
 [profile.wasm]
