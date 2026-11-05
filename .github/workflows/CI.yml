@@ -18,7 +18,7 @@ jobs:
         platform:
           - runner: ubuntu-22.04
             target: x86_64
-        python-version: ["3.12", "3.13", "3.14", "3.15"]
+        python-version: ["3.12", "3.15t"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -48,7 +48,7 @@ jobs:
         platform:
           - runner: ubuntu-22.04
             target: x86_64
-        python-version: ["3.12", "3.13", "3.14", "3.15"]
+        python-version: ["3.12", "3.15t"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -78,7 +78,7 @@ jobs:
         platform:
           - runner: windows-latest
             target: x64
-        python-version: ["3.12", "3.13", "3.14", "3.15"]
+        python-version: ["3.12", "3.15t"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -108,7 +108,7 @@ jobs:
         platform:
           - runner: macos-latest
             target: aarch64
-        python-version: ["3.12", "3.13", "3.14", "3.15"]
+        python-version: ["3.12", "3.15t"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

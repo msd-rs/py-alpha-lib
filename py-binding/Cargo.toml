@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 doctest = false
 
 [dependencies]
-pyo3 = { workspace = true, features = ["abi3"] }
+pyo3 = { workspace = true, features = ["abi3", "abi3t"] }
 pyo3-log.workspace = true
 thiserror.workspace = true
 numpy.workspace = true
