@@ -227,31 +227,74 @@ pub fn ta_ema_v<NumT: Float + Send + Sync>(
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .zip(periods.par_chunks(ctx.chunk_size(periods.len())))
     .for_each(|((r, i), p)| {
-      let mut prev = i[0];
       let total = r.len();
-      for (n, ((r, c), &period)) in r
-        .iter_mut()
-        .zip(i.iter())
-        .zip(p.iter())
-        .enumerate()
-        .skip(ctx.start(total))
-      {
-        if ctx.is_skip_nan() && !is_normal(c) {
-          *r = NumT::nan();
-          continue;
-        }
-        if ctx.is_strictly_cycle() && n < period - 1 {
-          *r = NumT::nan();
-          prev = *c;
-        } else {
+      let start = ctx.start(total);
+      let end = ctx.end(total);
+      r.fill(NumT::nan());
+
+      if start >= end || total == 0 {
+        return;
+      }
+
+      if ctx.is_skip_nan() {
+        let mut prev = NumT::nan();
+        let mut valid_count = 0;
+        for (n, ((r_val, &c), &period)) in r
+          .iter_mut()
+          .zip(i.iter())
+          .zip(p.iter())
+          .enumerate()
+          .take(end)
+        {
+          if !is_normal(&c) {
+            continue;
+          }
+          if ctx.is_strictly_cycle() && period > 1 && valid_count < period - 1 {
+            prev = c;
+            valid_count += 1;
+            continue;
+          }
           let alpha = if period > 0 {
             NumT::from(2.0).unwrap() / NumT::from(period + 1).unwrap()
           } else {
             NumT::zero()
           };
           let k = NumT::one() - alpha;
-          *r = alpha * *c + k * prev;
-          prev = *r;
+          let curr = if valid_count == 0 && (period <= 1 || !ctx.is_strictly_cycle()) {
+            c
+          } else {
+            alpha * c + k * prev
+          };
+          prev = curr;
+          valid_count += 1;
+          if n >= start {
+            *r_val = curr;
+          }
+        }
+      } else {
+        let mut prev = i[0];
+        for (n, ((r_val, &c), &period)) in r
+          .iter_mut()
+          .zip(i.iter())
+          .zip(p.iter())
+          .enumerate()
+          .take(end)
+        {
+          if ctx.is_strictly_cycle() && period > 1 && n < period - 1 {
+            prev = c;
+            continue;
+          }
+          let alpha = if period > 0 {
+            NumT::from(2.0).unwrap() / NumT::from(period + 1).unwrap()
+          } else {
+            NumT::zero()
+          };
+          let k = NumT::one() - alpha;
+          let curr = alpha * c + k * prev;
+          prev = curr;
+          if n >= start {
+            *r_val = curr;
+          }
         }
       }
     });
@@ -279,31 +322,74 @@ pub fn ta_sma_v<NumT: Float + Send + Sync>(
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .zip(ns.par_chunks(ctx.chunk_size(ns.len())))
     .for_each(|((r, i), p)| {
-      let mut prev = i[0];
       let total = r.len();
-      for (n, ((r, c), &period)) in r
-        .iter_mut()
-        .zip(i.iter())
-        .zip(p.iter())
-        .enumerate()
-        .skip(ctx.start(total))
-      {
-        if ctx.is_skip_nan() && !is_normal(c) {
-          *r = NumT::nan();
-          continue;
-        }
-        if ctx.is_strictly_cycle() && n < period - 1 {
-          *r = NumT::nan();
-          prev = *c;
-        } else {
+      let start = ctx.start(total);
+      let end = ctx.end(total);
+      r.fill(NumT::nan());
+
+      if start >= end || total == 0 {
+        return;
+      }
+
+      if ctx.is_skip_nan() {
+        let mut prev = NumT::nan();
+        let mut valid_count = 0;
+        for (n, ((r_val, &c), &period)) in r
+          .iter_mut()
+          .zip(i.iter())
+          .zip(p.iter())
+          .enumerate()
+          .take(end)
+        {
+          if !is_normal(&c) {
+            continue;
+          }
+          if ctx.is_strictly_cycle() && period > 1 && valid_count < period - 1 {
+            prev = c;
+            valid_count += 1;
+            continue;
+          }
           let alpha = if period > 0 {
             NumT::from(m).unwrap() / NumT::from(period).unwrap()
           } else {
             NumT::zero()
           };
           let k = NumT::one() - alpha;
-          *r = alpha * *c + k * prev;
-          prev = *r;
+          let curr = if valid_count == 0 && (period <= 1 || !ctx.is_strictly_cycle()) {
+            c
+          } else {
+            alpha * c + k * prev
+          };
+          prev = curr;
+          valid_count += 1;
+          if n >= start {
+            *r_val = curr;
+          }
+        }
+      } else {
+        let mut prev = i[0];
+        for (n, ((r_val, &c), &period)) in r
+          .iter_mut()
+          .zip(i.iter())
+          .zip(p.iter())
+          .enumerate()
+          .take(end)
+        {
+          if ctx.is_strictly_cycle() && period > 1 && n < period - 1 {
+            prev = c;
+            continue;
+          }
+          let alpha = if period > 0 {
+            NumT::from(m).unwrap() / NumT::from(period).unwrap()
+          } else {
+            NumT::zero()
+          };
+          let k = NumT::one() - alpha;
+          let curr = alpha * c + k * prev;
+          prev = curr;
+          if n >= start {
+            *r_val = curr;
+          }
         }
       }
     });
@@ -338,22 +424,56 @@ pub fn ta_dma_v<NumT: Float + Send + Sync>(
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .zip(weight.par_chunks(ctx.chunk_size(weight.len())))
     .for_each(|((r, i), w)| {
-      let mut prev = i[0];
       let total = r.len();
-      for (_n, ((r, c), &wt)) in r
-        .iter_mut()
-        .zip(i.iter())
-        .zip(w.iter())
-        .enumerate()
-        .skip(ctx.start(total))
-      {
-        if ctx.is_skip_nan() && !is_normal(c) {
-          *r = NumT::nan();
-          continue;
+      let start = ctx.start(total);
+      let end = ctx.end(total);
+      r.fill(NumT::nan());
+
+      if start >= end || total == 0 {
+        return;
+      }
+
+      if ctx.is_skip_nan() {
+        let mut prev = NumT::nan();
+        let mut valid_count = 0;
+        for (n, ((r_val, &c), &wt)) in r
+          .iter_mut()
+          .zip(i.iter())
+          .zip(w.iter())
+          .enumerate()
+          .take(end)
+        {
+          if !is_normal(&c) {
+            continue;
+          }
+          let k = NumT::one() - wt;
+          let curr = if valid_count == 0 {
+            c
+          } else {
+            wt * c + k * prev
+          };
+          prev = curr;
+          valid_count += 1;
+          if n >= start {
+            *r_val = curr;
+          }
         }
-        let k = NumT::one() - wt;
-        *r = wt * *c + k * prev;
-        prev = *r;
+      } else {
+        let mut prev = i[0];
+        for (n, ((r_val, &c), &wt)) in r
+          .iter_mut()
+          .zip(i.iter())
+          .zip(w.iter())
+          .enumerate()
+          .take(end)
+        {
+          let k = NumT::one() - wt;
+          let curr = wt * c + k * prev;
+          prev = curr;
+          if n >= start {
+            *r_val = curr;
+          }
+        }
       }
     });
   Ok(())
@@ -494,27 +614,50 @@ pub fn ema_impl<NumT: Float + Send + Sync>(
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
     .for_each(|(r, i)| {
-      let mut prev = i[0];
       let total = r.len();
-      for (n, (r, c)) in r
-        .iter_mut()
-        .zip(i.iter())
-        .enumerate()
-        .skip(ctx.start(total))
-      {
-        if ctx.is_skip_nan() && !is_normal(c) {
-          *r = NumT::nan();
-          continue;
-        }
-        if ctx.is_strictly_cycle() && n < periods - 1 {
-          *r = NumT::nan();
-          prev = *c;
-        } else {
-          if prev.is_nan() {
-            prev = *c;
+      let start = ctx.start(total);
+      let end = ctx.end(total);
+      r.fill(NumT::nan());
+
+      if start >= end || total == 0 {
+        return;
+      }
+
+      if ctx.is_skip_nan() {
+        let mut prev = NumT::nan();
+        let mut valid_count = 0;
+        for (n, (r_val, &c)) in r.iter_mut().zip(i.iter()).enumerate().take(end) {
+          if !is_normal(&c) {
+            continue;
           }
-          *r = weight * *c + k * prev;
-          prev = *r;
+          if ctx.is_strictly_cycle() && periods > 1 && valid_count < periods - 1 {
+            prev = c;
+            valid_count += 1;
+            continue;
+          }
+          let curr = if valid_count == 0 && (periods <= 1 || !ctx.is_strictly_cycle()) {
+            c
+          } else {
+            weight * c + k * prev
+          };
+          prev = curr;
+          valid_count += 1;
+          if n >= start {
+            *r_val = curr;
+          }
+        }
+      } else {
+        let mut prev = i[0];
+        for (n, (r_val, &c)) in r.iter_mut().zip(i.iter()).enumerate().take(end) {
+          if ctx.is_strictly_cycle() && periods > 1 && n < periods - 1 {
+            prev = c;
+            continue;
+          }
+          let curr = weight * c + k * prev;
+          prev = curr;
+          if n >= start {
+            *r_val = curr;
+          }
         }
       }
     });
