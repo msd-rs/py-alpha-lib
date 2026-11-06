@@ -1,0 +1,7 @@
+$:
+  vscode:
+    - docker:
+        image: docker.cnb.cool/elsejj/ci/good-dev:ide
+      services:
+        - vscode
+        - docker
