@@ -274,11 +274,6 @@ def test_cc_rank_start_end(start, end, groups):
   _assert_range_close(actual, expected, start, end, groups)
 
 
-@pytest.mark.xfail(
-  reason="groups<2 时回退到时序 RANK(input, 0) 输出全 nan, "
-         "横截面单个证券的排名百分比应为 1.0",
-  strict=False,
-)
 def test_cc_rank_single_group_matches_cross_section_logic():
   """groups=1: 唯一的证券在每个时刻都应得到排名百分比 1.0."""
   x = np.arange(1., 7.)
@@ -295,10 +290,10 @@ def test_cc_rank_edge_cases():
     _calc(np.ones(10), groups=3)
 
   one = np.array([3.0])
-  assert np.isnan(_calc(one, groups=1)).all()
+  _assert_close(_calc(one, groups=1), np.array([1.0]))
 
   all_nan = np.full(12, np.nan)
   assert np.isnan(_calc(all_nan, groups=3, flags=al.FLAG_SKIP_NAN)).all()
 
-  # groups=0 等价于 groups=1, 同样走时序回退分支
-  assert np.isnan(_calc(_clean_data(12), groups=0)).all()
+  # groups=0 等价于 groups=1
+  _assert_close(_calc(_clean_data(12), groups=0), np.ones(12))

@@ -278,11 +278,6 @@ def test_bins_flags_do_not_change_result(flags):
   _assert_close(_calc(x, 3, groups=3, flags=flags), base)
 
 
-@pytest.mark.xfail(
-  reason="ta_bins 让 nan 占据排序位置且 total 仍为 groups, "
-         "与缺失值不参与分箱的算法逻辑不一致",
-  strict=False,
-)
 @pytest.mark.parametrize(
   "flags", [al.FLAG_SKIP_NAN, al.FLAG_SKIP_NAN | al.FLAG_STRICTLY_CYCLE]
 )
