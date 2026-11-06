@@ -1,5 +1,17 @@
 # ChangeLog
 
+
+## [0.4.0] - 2026-11-06
+
+### Added
+
+- All algorithm has it's integration test file in `py-binding/itests`
+
+### Fixed
+
+- Some Bug found in integration tests.
+
+
 ## [0.3.3] - 2026-11-05
 
 ### Added
