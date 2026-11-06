@@ -132,6 +132,81 @@ pub fn ta_llvbars_v<NumT: Float + Send + Sync>(
   )
 }
 
+struct SparseTable {
+  st: Vec<usize>,
+  n: usize,
+}
+
+impl SparseTable {
+  fn new<NumT: Float, FComp: Fn(NumT, NumT) -> bool>(vals: &[NumT], compare: &FComp) -> Self {
+    let n = vals.len();
+    if n == 0 {
+      return Self {
+        st: Vec::new(),
+        n: 0,
+      };
+    }
+    let max_k = (usize::BITS - n.leading_zeros()) as usize;
+    let mut st = vec![0; n * max_k];
+
+    for i in 0..n {
+      st[i] = i;
+    }
+
+    for k in 1..max_k {
+      let half = 1 << (k - 1);
+      let step = 1 << k;
+      let prev_layer = (k - 1) * n;
+      let curr_layer = k * n;
+      if step <= n {
+        for i in 0..=(n - step) {
+          let left = st[prev_layer + i];
+          let right = st[prev_layer + i + half];
+          let best = if !is_normal(&vals[left]) {
+            right
+          } else if !is_normal(&vals[right]) {
+            left
+          } else if compare(vals[right], vals[left]) {
+            right
+          } else {
+            left
+          };
+          st[curr_layer + i] = best;
+        }
+      }
+    }
+
+    Self { st, n }
+  }
+
+  #[inline]
+  fn query<NumT: Float, FComp: Fn(NumT, NumT) -> bool>(
+    &self,
+    left: usize,
+    right: usize,
+    vals: &[NumT],
+    compare: &FComp,
+  ) -> usize {
+    if left >= right {
+      return left;
+    }
+    let len = right - left + 1;
+    let k = (usize::BITS - 1 - len.leading_zeros()) as usize;
+    let layer = k * self.n;
+    let idx1 = self.st[layer + left];
+    let idx2 = self.st[layer + right + 1 - (1 << k)];
+    if !is_normal(&vals[idx1]) {
+      idx2
+    } else if !is_normal(&vals[idx2]) {
+      idx1
+    } else if compare(vals[idx2], vals[idx1]) {
+      idx2
+    } else {
+      idx1
+    }
+  }
+}
+
 fn run_extremum_v<NumT, FComp, FOut>(
   ctx: &Context,
   r: &mut [NumT],
@@ -160,45 +235,70 @@ where
       let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
-      let mut deque: VecDeque<usize> = VecDeque::new();
+      if start >= end || r.is_empty() {
+        return;
+      }
 
       if ctx.is_skip_nan() {
-        let mut history_indices = Vec::with_capacity(r.len());
-        let mut history_vals = Vec::with_capacity(r.len());
+        let mut history_indices = Vec::with_capacity(end.saturating_sub(start));
+        let mut history_vals = Vec::with_capacity(end.saturating_sub(start));
         for i in start..end {
           let val = x[i];
           if is_normal(&val) {
             history_indices.push(i);
             history_vals.push(val);
-            let l = history_vals.len();
-            let curr_hist_idx = l - 1;
+          }
+        }
 
-            while let Some(&back_idx) = deque.back() {
-              if compare(val, history_vals[back_idx]) {
-                deque.pop_back();
-              } else {
-                break;
+        let st = SparseTable::new(&history_vals, &compare);
+
+        for (curr_hist_idx, (&i, &_val)) in history_indices.iter().zip(history_vals.iter()).enumerate() {
+          let l = curr_hist_idx + 1;
+          let period = p[i];
+          let start_hist_idx = if period == 0 { 0 } else { if l >= period { l - period } else { 0 } };
+
+          let mut can_write = false;
+          if period == 0 {
+            can_write = true;
+          } else {
+            if ctx.is_strictly_cycle() {
+              if l >= period && (i - history_indices[start_hist_idx] + 1 == period) {
+                can_write = true;
               }
+            } else {
+              can_write = true;
             }
-            deque.push_back(curr_hist_idx);
+          }
 
-            let period = p[i];
-            let start_hist_idx = if period == 0 { 0 } else { if l >= period { l - period } else { 0 } };
-            
-            while let Some(&front_idx) = deque.front() {
-              if front_idx < start_hist_idx {
-                deque.pop_front();
-              } else {
-                break;
-              }
-            }
+          if can_write {
+            let best_hist_idx = st.query(start_hist_idx, curr_hist_idx, &history_vals, &compare);
+            let best_orig_idx = history_indices[best_hist_idx];
+            r[i] = output(best_orig_idx, i, history_vals[best_hist_idx]);
+          }
+        }
+      } else {
+        let st = SparseTable::new(&x[..end], &compare);
+        let mut nan_pref = vec![0; end + 1];
+        for k in 0..end {
+          nan_pref[k + 1] = nan_pref[k] + if is_normal(&x[k]) { 0 } else { 1 };
+        }
 
+        for i in start..end {
+          let val = x[i];
+          if !is_normal(&val) {
+            continue;
+          }
+          let period = p[i];
+          let start_idx = if period == 0 { 0 } else { if i >= period { i + 1 - period } else { 0 } };
+
+          let nan_in_window = nan_pref[i + 1] - nan_pref[start_idx];
+          if nan_in_window == 0 {
             let mut can_write = false;
             if period == 0 {
               can_write = true;
             } else {
               if ctx.is_strictly_cycle() {
-                if l >= period && (i - history_indices[start_hist_idx] + 1 == period) {
+                if i >= period - 1 {
                   can_write = true;
                 }
               } else {
@@ -207,73 +307,8 @@ where
             }
 
             if can_write {
-              if let Some(&best_hist_idx) = deque.front() {
-                let best_orig_idx = history_indices[best_hist_idx];
-                r[i] = output(best_orig_idx, i, history_vals[best_hist_idx]);
-              }
-            }
-          }
-        }
-      } else {
-        // !skip_nan
-        let mut nan_pref = vec![0; r.len() + 1];
-        for k in 0..r.len() {
-          let val = x[k];
-          if is_normal(&val) {
-            nan_pref[k + 1] = nan_pref[k];
-          } else {
-            nan_pref[k + 1] = nan_pref[k] + 1;
-          }
-        }
-
-        for i in 0..end {
-          let val = x[i];
-          if is_normal(&val) {
-            while let Some(&back_idx) = deque.back() {
-              if compare(val, x[back_idx]) {
-                deque.pop_back();
-              } else {
-                break;
-              }
-            }
-            deque.push_back(i);
-          }
-
-          if i >= start {
-            if !is_normal(&val) {
-              continue;
-            }
-            let period = p[i];
-            let start_idx = if period == 0 { 0 } else { if i >= period { i + 1 - period } else { 0 } };
-            
-            while let Some(&front_idx) = deque.front() {
-              if front_idx < start_idx {
-                deque.pop_front();
-              } else {
-                break;
-              }
-            }
-
-            let nan_in_window = nan_pref[i + 1] - nan_pref[start_idx];
-            if nan_in_window == 0 {
-              let mut can_write = false;
-              if period == 0 {
-                can_write = true;
-              } else {
-                if ctx.is_strictly_cycle() {
-                  if i >= period - 1 {
-                    can_write = true;
-                  }
-                } else {
-                  can_write = true;
-                }
-              }
-
-              if can_write {
-                if let Some(&best_idx) = deque.front() {
-                  r[i] = output(best_idx, i, x[best_idx]);
-                }
-              }
+              let best_idx = st.query(start_idx, i, &x[..end], &compare);
+              r[i] = output(best_idx, i, x[best_idx]);
             }
           }
         }
