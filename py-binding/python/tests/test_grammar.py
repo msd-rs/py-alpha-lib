@@ -5,7 +5,7 @@ from lark import Lark
 
 
 def test_grammar_lark():
-  with open("python/alpha/lang/alpha.lark", "r") as f:
+  with open("alpha/lang/alpha.lark", "r") as f:
     grammar = f.read()
 
   parser = Lark(grammar, start="start", parser="lalr")
