@@ -6,7 +6,7 @@ use std::{cmp::Ordering, collections::BTreeMap, fmt::Debug};
 use num_traits::Float;
 use rayon::prelude::*;
 
-use crate::algo::{Context, Error};
+use crate::algo::{Context, Error, is_normal, skip_nan_window::SkipNanWindow};
 
 #[derive(Copy, Clone, Default, PartialEq, PartialOrd)]
 struct OrderedFloat<NumT: Float> {
@@ -49,7 +49,7 @@ impl<NumT: Float + Debug> Debug for OrderedFloat<NumT> {
 /// Calculate rank in a sliding window with size `periods`
 ///
 /// Uses min-rank method for ties (same as pandas rankdata method='min').
-/// NaN values are treated as larger than all non-NaN values.
+/// Current NaN values produce NaN output.
 pub fn ta_rank<NumT: Float + Send + Sync>(
   ctx: &Context,
   r: &mut [NumT],
@@ -58,6 +58,11 @@ pub fn ta_rank<NumT: Float + Send + Sync>(
 ) -> Result<(), Error> {
   if r.len() != input.len() {
     return Err(Error::LengthMismatch(r.len(), input.len()));
+  }
+
+  if periods == 0 {
+    r.fill(NumT::nan());
+    return Ok(());
   }
 
   if periods == 1 {
@@ -71,51 +76,102 @@ pub fn ta_rank<NumT: Float + Send + Sync>(
       let start = ctx.start(r.len());
       let end = ctx.end(r.len());
       r.fill(NumT::nan());
-      // Track counts per unique value to handle duplicates correctly.
-      let mut rank_window: BTreeMap<OrderedFloat<NumT>, u32> = BTreeMap::new();
-      let mut nan_count: usize = 0;
-      let mut window_size: usize = 0;
 
-      for i in start..end {
-        let val = x[i];
+      if ctx.is_skip_nan() {
+        let iter = SkipNanWindow::new(&x[..end], periods, start);
+        let mut rank_window: BTreeMap<OrderedFloat<NumT>, u32> = BTreeMap::new();
+        for i in iter {
+          let val = x[i.end];
+          if is_normal(&val) {
+            *rank_window.entry(val.into()).or_insert(0) += 1;
+          }
 
-        // Add current value to window
-        if val.is_nan() {
-          nan_count += 1;
-        } else {
-          *rank_window.entry(val.into()).or_insert(0) += 1;
-        }
-        window_size += 1;
-
-        // Remove oldest value if window exceeds periods
-        if window_size > periods {
-          let old_val = x[i - periods];
-          if old_val.is_nan() {
-            nan_count -= 1;
-          } else {
-            let old_key: OrderedFloat<NumT> = old_val.into();
-            if let Some(count) = rank_window.get_mut(&old_key) {
-              *count -= 1;
-              if *count == 0 {
-                rank_window.remove(&old_key);
+          // remove values that fell out of window
+          for k in i.prev_start..i.start {
+            let old = x[k];
+            if is_normal(&old) {
+              let old_key: OrderedFloat<NumT> = old.into();
+              if let Some(count) = rank_window.get_mut(&old_key) {
+                *count -= 1;
+                if *count == 0 {
+                  rank_window.remove(&old_key);
+                }
               }
             }
           }
-          window_size -= 1;
-        }
 
-        if ctx.is_strictly_cycle() && window_size < periods {
-          continue;
-        }
+          if !is_normal(&val) {
+            continue;
+          }
 
-        // Calculate rank
-        if val.is_nan() {
-          // NaN gets the highest rank in the window
-          r[i] = NumT::from(window_size).unwrap();
-        } else {
-          // Count all values strictly less than current (NaN treated as smallest)
+          if ctx.is_strictly_cycle() {
+            if i.no_nan_count < periods || (i.end - i.start + 1) != periods {
+              continue;
+            }
+          }
+
           let val_key: OrderedFloat<NumT> = val.into();
-          let mut less_count: usize = nan_count;
+          let mut less_count: usize = 0;
+          for (key, count) in rank_window.iter() {
+            if *key < val_key {
+              less_count += *count as usize;
+            } else {
+              break;
+            }
+          }
+          r[i.end] = NumT::from(less_count + 1).unwrap();
+        }
+      } else {
+        let mut rank_window: BTreeMap<OrderedFloat<NumT>, u32> = BTreeMap::new();
+        let mut nan_in_window = 0;
+
+        let pre_fill_start = if start >= periods { start - periods } else { 0 };
+        for k in pre_fill_start..start {
+          let val = x[k];
+          if is_normal(&val) {
+            *rank_window.entry(val.into()).or_insert(0) += 1;
+          } else {
+            nan_in_window += 1;
+          }
+        }
+
+        for i in start..end {
+          let val = x[i];
+          if is_normal(&val) {
+            *rank_window.entry(val.into()).or_insert(0) += 1;
+          } else {
+            nan_in_window += 1;
+          }
+
+          if i >= periods {
+            let old = x[i - periods];
+            if is_normal(&old) {
+              let old_key: OrderedFloat<NumT> = old.into();
+              if let Some(count) = rank_window.get_mut(&old_key) {
+                *count -= 1;
+                if *count == 0 {
+                  rank_window.remove(&old_key);
+                }
+              }
+            } else {
+              nan_in_window -= 1;
+            }
+          }
+
+          if !is_normal(&val) {
+            continue;
+          }
+
+          if nan_in_window > 0 {
+            continue;
+          }
+
+          if ctx.is_strictly_cycle() && i < periods - 1 {
+            continue;
+          }
+
+          let val_key: OrderedFloat<NumT> = val.into();
+          let mut less_count: usize = 0;
           for (key, count) in rank_window.iter() {
             if *key < val_key {
               less_count += *count as usize;
@@ -392,12 +448,13 @@ mod tests {
     let ctx = Context::new(0, 0, 0);
 
     ta_rank(&ctx, &mut r, &input, 3).unwrap();
-    // NaN gets the highest rank since NaN != NaN
-    // Position 0: [1] -> 1
-    // Position 1: [1, NaN] -> NaN rank 2 (highest)
-    // Position 2: [1, NaN, 3] -> 3 rank 3
-    // Position 3: [NaN, 3, 4] -> 4 rank 3
-    assert_vec_eq_nan(&r, &vec![1.0, 2.0, 3.0, 3.0]);
+    // flags=0: NaN in window causes NaN output
+    assert_vec_eq_nan(&r, &vec![1.0, f64::NAN, f64::NAN, f64::NAN]);
+
+    // FLAG_SKIP_NAN: skips NaN and keeps non-NaN rank
+    let ctx_skip = Context::new(0, 0, 1);
+    ta_rank(&ctx_skip, &mut r, &input, 3).unwrap();
+    assert_vec_eq_nan(&r, &vec![1.0, f64::NAN, 2.0, 3.0]);
   }
 
   #[test]

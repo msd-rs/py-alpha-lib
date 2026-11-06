@@ -4,7 +4,7 @@
 use num_traits::Float;
 use rayon::prelude::*;
 
-use crate::algo::{Context, Error, is_normal};
+use crate::algo::{Context, Error, is_normal, skip_nan_window::SkipNanWindow};
 
 /// Calculate rolling Shannon entropy over a moving window
 ///
@@ -33,87 +33,158 @@ pub fn ta_entropy<NumT: Float + Send + Sync>(
       let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
-      // We need to collect window values to compute entropy,
-      // since we need min/max for binning.
-      let mut window: Vec<NumT> = Vec::with_capacity(periods);
+      if ctx.is_skip_nan() {
+        let iter = SkipNanWindow::new(&x[..end], periods, start);
+        let mut window: Vec<NumT> = Vec::with_capacity(periods);
 
-      for i in start..end {
-        let val = x[i];
-
-        // Add new value
-        if is_normal(&val) {
-          window.push(val);
-        }
-
-        // Remove old values that fall out of window
-        // We track by time index, so the window contains values from
-        // x[max(0, i-periods+1)..=i] that are valid
-        let win_start = if i >= periods { i - periods + 1 } else { 0 };
-
-        // Rebuild window for simplicity (correct but not single-pass optimal)
-        window.clear();
-        for k in win_start..=i {
-          if is_normal(&x[k]) {
-            window.push(x[k]);
+        for item in iter {
+          let val = x[item.end];
+          if !is_normal(&val) {
+            continue;
           }
-        }
 
-        if !is_normal(&val) {
-          continue;
-        }
-
-        if ctx.is_strictly_cycle() && i < periods - 1 {
-          continue;
-        }
-
-        let n = window.len();
-        if n < 2 {
-          r[i] = NumT::zero();
-          continue;
-        }
-
-        // Find min and max
-        let mut min_val = window[0];
-        let mut max_val = window[0];
-        for &v in &window[1..] {
-          if v < min_val {
-            min_val = v;
+          if ctx.is_strictly_cycle() {
+            if item.no_nan_count < periods || (item.end - item.start + 1) != periods {
+              continue;
+            }
           }
-          if v > max_val {
-            max_val = v;
+
+          window.clear();
+          for k in item.start..=item.end {
+            let v = x[k];
+            if is_normal(&v) {
+              window.push(v);
+            }
           }
-        }
 
-        if max_val == min_val {
-          // All same value -> entropy = 0
-          r[i] = NumT::zero();
-          continue;
-        }
-
-        // Bin the values
-        let range = max_val - min_val;
-        let bin_width = range / NumT::from(bins).unwrap();
-        let mut counts = vec![0usize; bins];
-
-        for &v in &window {
-          let mut bin_idx = ((v - min_val) / bin_width).to_usize().unwrap_or(bins - 1);
-          if bin_idx >= bins {
-            bin_idx = bins - 1;
+          let n = window.len();
+          if n < 2 {
+            r[item.end] = NumT::zero();
+            continue;
           }
-          counts[bin_idx] += 1;
-        }
 
-        // Compute entropy: -sum(p * ln(p))
-        let total = NumT::from(n).unwrap();
-        let mut entropy = NumT::zero();
-        for &c in &counts {
-          if c > 0 {
-            let p = NumT::from(c).unwrap() / total;
-            entropy = entropy - p * p.ln();
+          let mut min_val = window[0];
+          let mut max_val = window[0];
+          for &v in &window[1..] {
+            if v < min_val {
+              min_val = v;
+            }
+            if v > max_val {
+              max_val = v;
+            }
           }
-        }
 
-        r[i] = entropy;
+          if max_val == min_val {
+            r[item.end] = NumT::zero();
+            continue;
+          }
+
+          let range = max_val - min_val;
+          let bin_width = range / NumT::from(bins).unwrap();
+          let mut counts = vec![0usize; bins];
+
+          for &v in &window {
+            let mut bin_idx = ((v - min_val) / bin_width).to_usize().unwrap_or(bins - 1);
+            if bin_idx >= bins {
+              bin_idx = bins - 1;
+            }
+            counts[bin_idx] += 1;
+          }
+
+          let total = NumT::from(n).unwrap();
+          let mut entropy = NumT::zero();
+          for &c in &counts {
+            if c > 0 {
+              let p = NumT::from(c).unwrap() / total;
+              entropy = entropy - p * p.ln();
+            }
+          }
+
+          r[item.end] = entropy;
+        }
+      } else {
+        // We need to collect window values to compute entropy,
+        // since we need min/max for binning.
+        let mut window: Vec<NumT> = Vec::with_capacity(periods);
+
+        for i in start..end {
+          let val = x[i];
+
+          // Add new value
+          if is_normal(&val) {
+            window.push(val);
+          }
+
+          // Remove old values that fall out of window
+          // We track by time index, so the window contains values from
+          // x[max(0, i-periods+1)..=i] that are valid
+          let win_start = if i >= periods { i - periods + 1 } else { 0 };
+
+          // Rebuild window for simplicity (correct but not single-pass optimal)
+          window.clear();
+          for k in win_start..=i {
+            if is_normal(&x[k]) {
+              window.push(x[k]);
+            }
+          }
+
+          if !is_normal(&val) {
+            continue;
+          }
+
+          if ctx.is_strictly_cycle() && i < periods - 1 {
+            continue;
+          }
+
+          let n = window.len();
+          if n < 2 {
+            r[i] = NumT::zero();
+            continue;
+          }
+
+          // Find min and max
+          let mut min_val = window[0];
+          let mut max_val = window[0];
+          for &v in &window[1..] {
+            if v < min_val {
+              min_val = v;
+            }
+            if v > max_val {
+              max_val = v;
+            }
+          }
+
+          if max_val == min_val {
+            // All same value -> entropy = 0
+            r[i] = NumT::zero();
+            continue;
+          }
+
+          // Bin the values
+          let range = max_val - min_val;
+          let bin_width = range / NumT::from(bins).unwrap();
+          let mut counts = vec![0usize; bins];
+
+          for &v in &window {
+            let mut bin_idx = ((v - min_val) / bin_width).to_usize().unwrap_or(bins - 1);
+            if bin_idx >= bins {
+              bin_idx = bins - 1;
+            }
+            counts[bin_idx] += 1;
+          }
+
+          // Compute entropy: -sum(p * ln(p))
+          let total = NumT::from(n).unwrap();
+          let mut entropy = NumT::zero();
+          for &c in &counts {
+            if c > 0 {
+              let p = NumT::from(c).unwrap() / total;
+              entropy = entropy - p * p.ln();
+            }
+          }
+
+          r[i] = entropy;
+        }
       }
     });
 

@@ -4,7 +4,7 @@
 use num_traits::Float;
 use rayon::prelude::*;
 
-use crate::algo::{Context, Error, is_normal};
+use crate::algo::{Context, Error, is_normal, skip_nan_window::SkipNanWindow};
 
 /// Calculate rolling quantile over a moving window
 ///
@@ -45,57 +45,107 @@ pub fn ta_quantile<NumT: Float + Send + Sync>(
       // Allocate a buffer for sorting within the window
       let mut buf = vec![NumT::zero(); periods];
 
-      for i in start..end {
-        let val = x[i];
-        if !is_normal(&val) {
-          continue;
-        }
-
-        // Determine window boundaries
-        let win_start = if i >= periods { i - periods + 1 } else { 0 };
-        let win_end = i + 1;
-
-        // Collect valid (non-NaN) values into buffer
-        let mut count = 0;
-        for k in win_start..win_end {
-          let v = x[k];
-          if is_normal(&v) {
-            buf[count] = v;
-            count += 1;
-          }
-        }
-
-        if count == 0 {
-          continue;
-        }
-
-        // Check strict cycle: require full window of `periods` valid values
-        if ctx.is_strictly_cycle() {
-          if i < periods - 1 || count != periods || (win_end - win_start) != periods {
+      if ctx.is_skip_nan() {
+        let iter = SkipNanWindow::new(&x[..end], periods, start);
+        for item in iter {
+          let val = x[item.end];
+          if !is_normal(&val) {
             continue;
           }
-        }
 
-        // Sort the buffer (insertion sort for small windows, efficient for typical d=5..50)
-        let slice = &mut buf[..count];
-        for j in 1..count {
-          let key = slice[j];
-          let mut k = j;
-          while k > 0 && slice[k - 1] > key {
-            slice[k] = slice[k - 1];
-            k -= 1;
+          if ctx.is_strictly_cycle() {
+            if item.no_nan_count < periods || (item.end - item.start + 1) != periods {
+              continue;
+            }
           }
-          slice[k] = key;
-        }
 
-        // Linear interpolation quantile (matching numpy/pandas)
-        let pos = q * NumT::from(count - 1).unwrap();
-        let lo = pos.floor();
-        let hi = lo + NumT::one();
-        let lo_idx = lo.to_usize().unwrap_or(0).min(count - 1);
-        let hi_idx = hi.to_usize().unwrap_or(0).min(count - 1);
-        let frac = pos - lo;
-        r[i] = slice[lo_idx] * (NumT::one() - frac) + slice[hi_idx] * frac;
+          let mut count = 0;
+          for k in item.start..=item.end {
+            let v = x[k];
+            if is_normal(&v) {
+              if count < periods {
+                buf[count] = v;
+                count += 1;
+              }
+            }
+          }
+
+          if count == 0 {
+            continue;
+          }
+
+          let slice = &mut buf[..count];
+          for j in 1..count {
+            let key = slice[j];
+            let mut k = j;
+            while k > 0 && slice[k - 1] > key {
+              slice[k] = slice[k - 1];
+              k -= 1;
+            }
+            slice[k] = key;
+          }
+
+          let pos = q * NumT::from(count - 1).unwrap();
+          let lo = pos.floor();
+          let hi = lo + NumT::one();
+          let lo_idx = lo.to_usize().unwrap_or(0).min(count - 1);
+          let hi_idx = hi.to_usize().unwrap_or(0).min(count - 1);
+          let frac = pos - lo;
+          r[item.end] = slice[lo_idx] * (NumT::one() - frac) + slice[hi_idx] * frac;
+        }
+      } else {
+        for i in start..end {
+          let val = x[i];
+          if !is_normal(&val) {
+            continue;
+          }
+
+          // Determine window boundaries
+          let win_start = if i >= periods { i - periods + 1 } else { 0 };
+          let win_end = i + 1;
+
+          // Collect valid (non-NaN) values into buffer
+          let mut count = 0;
+          for k in win_start..win_end {
+            let v = x[k];
+            if is_normal(&v) {
+              buf[count] = v;
+              count += 1;
+            }
+          }
+
+          if count == 0 {
+            continue;
+          }
+
+          // Check strict cycle: require full window of `periods` valid values
+          if ctx.is_strictly_cycle() {
+            if i < periods - 1 || count != periods || (win_end - win_start) != periods {
+              continue;
+            }
+          }
+
+          // Sort the buffer (insertion sort for small windows, efficient for typical d=5..50)
+          let slice = &mut buf[..count];
+          for j in 1..count {
+            let key = slice[j];
+            let mut k = j;
+            while k > 0 && slice[k - 1] > key {
+              slice[k] = slice[k - 1];
+              k -= 1;
+            }
+            slice[k] = key;
+          }
+
+          // Linear interpolation quantile (matching numpy/pandas)
+          let pos = q * NumT::from(count - 1).unwrap();
+          let lo = pos.floor();
+          let hi = lo + NumT::one();
+          let lo_idx = lo.to_usize().unwrap_or(0).min(count - 1);
+          let hi_idx = hi.to_usize().unwrap_or(0).min(count - 1);
+          let frac = pos - lo;
+          r[i] = slice[lo_idx] * (NumT::one() - frac) + slice[hi_idx] * frac;
+        }
       }
     });
 

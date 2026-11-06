@@ -1,6 +1,8 @@
 // Copyright 2026 MSD-RS Project LiJia
 // SPDX-License-Identifier: BSD-2-Clause
 
+use std::collections::VecDeque;
+
 use num_traits::Float;
 use rayon::prelude::*;
 
@@ -21,7 +23,6 @@ pub fn ta_min_max_diff<NumT: Float + Send + Sync>(
   }
 
 
-  use std::collections::VecDeque;
 
   r.par_chunks_mut(ctx.chunk_size(r.len()))
     .zip(input.par_chunks(ctx.chunk_size(input.len())))
@@ -30,87 +31,148 @@ pub fn ta_min_max_diff<NumT: Float + Send + Sync>(
       let end = ctx.end(r.len());
       r.fill(NumT::nan());
 
-      let mut max_deque: VecDeque<usize> = VecDeque::new();
-      let mut min_deque: VecDeque<usize> = VecDeque::new();
-      let mut nan_in_window = 0;
+      if ctx.is_skip_nan() {
+        let iter = SkipNanWindow::new(&x[..end], periods, start);
+        let mut max_deque: VecDeque<usize> = VecDeque::new();
+        let mut min_deque: VecDeque<usize> = VecDeque::new();
 
-      let pre_fill_start = if start >= periods { start - periods } else { 0 };
-
-      for k in pre_fill_start..start {
-        let val = x[k];
-        if is_normal(&val) {
-          while let Some(&back) = max_deque.back() {
-            if val >= x[back] {
-              max_deque.pop_back();
-            } else {
-              break;
+        for i in iter {
+          let curr_val = x[i.end];
+          if is_normal(&curr_val) {
+            while let Some(&back_idx) = max_deque.back() {
+              if curr_val >= x[back_idx] {
+                max_deque.pop_back();
+              } else {
+                break;
+              }
             }
-          }
-          max_deque.push_back(k);
-          while let Some(&back) = min_deque.back() {
-            if val <= x[back] {
-              min_deque.pop_back();
-            } else {
-              break;
-            }
-          }
-          min_deque.push_back(k);
-        } else {
-          nan_in_window += 1;
-        }
-      }
+            max_deque.push_back(i.end);
 
-      for i in start..end {
-        let val = x[i];
-
-        if is_normal(&val) {
-          while let Some(&back) = max_deque.back() {
-            if val >= x[back] {
-              max_deque.pop_back();
-            } else {
-              break;
+            while let Some(&back_idx) = min_deque.back() {
+              if curr_val <= x[back_idx] {
+                min_deque.pop_back();
+              } else {
+                break;
+              }
             }
+            min_deque.push_back(i.end);
           }
-          max_deque.push_back(i);
-          while let Some(&back) = min_deque.back() {
-            if val <= x[back] {
-              min_deque.pop_back();
-            } else {
-              break;
-            }
-          }
-          min_deque.push_back(i);
-        } else {
-          nan_in_window += 1;
-        }
 
-        if i >= periods {
-          let old = x[i - periods];
-          if !is_normal(&old) {
-            nan_in_window -= 1;
-          }
-          if let Some(&front) = max_deque.front() {
-            if front <= i - periods {
+          while let Some(&front_idx) = max_deque.front() {
+            if front_idx < i.start {
               max_deque.pop_front();
+            } else {
+              break;
             }
           }
-          if let Some(&front) = min_deque.front() {
-            if front <= i - periods {
+
+          while let Some(&front_idx) = min_deque.front() {
+            if front_idx < i.start {
               min_deque.pop_front();
+            } else {
+              break;
+            }
+          }
+
+          if !is_normal(&curr_val) {
+            continue;
+          }
+
+          if ctx.is_strictly_cycle() {
+            if i.no_nan_count == periods && (i.end - i.start + 1) == periods {
+              if let (Some(&max_idx), Some(&min_idx)) = (max_deque.front(), min_deque.front()) {
+                r[i.end] = x[max_idx] - x[min_idx];
+              }
+            }
+          } else {
+            if let (Some(&max_idx), Some(&min_idx)) = (max_deque.front(), min_deque.front()) {
+              r[i.end] = x[max_idx] - x[min_idx];
             }
           }
         }
+      } else {
+        let mut max_deque: VecDeque<usize> = VecDeque::new();
+        let mut min_deque: VecDeque<usize> = VecDeque::new();
+        let mut nan_in_window = 0;
 
-        if nan_in_window > 0 || !is_normal(&val) {
-          continue;
+        let pre_fill_start = if start >= periods { start - periods } else { 0 };
+
+        for k in pre_fill_start..start {
+          let val = x[k];
+          if is_normal(&val) {
+            while let Some(&back) = max_deque.back() {
+              if val >= x[back] {
+                max_deque.pop_back();
+              } else {
+                break;
+              }
+            }
+            max_deque.push_back(k);
+            while let Some(&back) = min_deque.back() {
+              if val <= x[back] {
+                min_deque.pop_back();
+              } else {
+                break;
+              }
+            }
+            min_deque.push_back(k);
+          } else {
+            nan_in_window += 1;
+          }
         }
 
-        if ctx.is_strictly_cycle() && i < periods - 1 {
-          continue;
-        }
+        for i in start..end {
+          let val = x[i];
 
-        if let (Some(&max_idx), Some(&min_idx)) = (max_deque.front(), min_deque.front()) {
-          r[i] = x[max_idx] - x[min_idx];
+          if is_normal(&val) {
+            while let Some(&back) = max_deque.back() {
+              if val >= x[back] {
+                max_deque.pop_back();
+              } else {
+                break;
+              }
+            }
+            max_deque.push_back(i);
+            while let Some(&back) = min_deque.back() {
+              if val <= x[back] {
+                min_deque.pop_back();
+              } else {
+                break;
+              }
+            }
+            min_deque.push_back(i);
+          } else {
+            nan_in_window += 1;
+          }
+
+          if i >= periods {
+            let old = x[i - periods];
+            if !is_normal(&old) {
+              nan_in_window -= 1;
+            }
+            if let Some(&front) = max_deque.front() {
+              if front <= i - periods {
+                max_deque.pop_front();
+              }
+            }
+            if let Some(&front) = min_deque.front() {
+              if front <= i - periods {
+                min_deque.pop_front();
+              }
+            }
+          }
+
+          if nan_in_window > 0 || !is_normal(&val) {
+            continue;
+          }
+
+          if ctx.is_strictly_cycle() && i < periods - 1 {
+            continue;
+          }
+
+          if let (Some(&max_idx), Some(&min_idx)) = (max_deque.front(), min_deque.front()) {
+            r[i] = x[max_idx] - x[min_idx];
+          }
         }
       }
     });
@@ -148,29 +210,59 @@ pub fn ta_weighted_delay<NumT: Float + Send + Sync>(
       // Weight denominator: sum of 1..=periods = periods*(periods+1)/2
       let denom = NumT::from(periods * (periods + 1) / 2).unwrap();
 
-      for i in start..end {
-        // We need x[i-1], x[i-2], ..., x[i-periods]
-        if i < periods {
-          continue;
-        }
-
-        let mut sum = NumT::zero();
-        let mut has_nan = false;
-        for k in 1..=periods {
-          let val = x[i - k];
-          if !is_normal(&val) {
-            has_nan = true;
-            break;
+      if ctx.is_skip_nan() {
+        let mut valid_history: VecDeque<(usize, NumT)> = VecDeque::with_capacity(periods);
+        for i in start..end {
+          let val = x[i];
+          if is_normal(&val) {
+            if valid_history.len() == periods {
+              let mut can_calc = true;
+              if ctx.is_strictly_cycle() {
+                let oldest_idx = valid_history.front().unwrap().0;
+                if oldest_idx != i - periods {
+                  can_calc = false;
+                }
+              }
+              if can_calc {
+                let mut sum = NumT::zero();
+                for (k, (_, v)) in valid_history.iter().rev().enumerate() {
+                  let w = NumT::from(periods - k).unwrap();
+                  sum = sum + w * *v;
+                }
+                r[i] = sum / denom;
+              }
+            }
+            if valid_history.len() == periods {
+              valid_history.pop_front();
+            }
+            valid_history.push_back((i, val));
           }
-          // Weight: periods - k + 1 for most recent lag getting highest weight
-          // lag 1 (most recent) gets weight = periods
-          // lag periods (oldest) gets weight = 1
-          let w = NumT::from(periods - k + 1).unwrap();
-          sum = sum + w * val;
         }
+      } else {
+        for i in start..end {
+          // We need x[i-1], x[i-2], ..., x[i-periods]
+          if i < periods {
+            continue;
+          }
 
-        if !has_nan {
-          r[i] = sum / denom;
+          let mut sum = NumT::zero();
+          let mut has_nan = false;
+          for k in 1..=periods {
+            let val = x[i - k];
+            if !is_normal(&val) {
+              has_nan = true;
+              break;
+            }
+            // Weight: periods - k + 1 for most recent lag getting highest weight
+            // lag 1 (most recent) gets weight = periods
+            // lag periods (oldest) gets weight = 1
+            let w = NumT::from(periods - k + 1).unwrap();
+            sum = sum + w * val;
+          }
+
+          if !has_nan {
+            r[i] = sum / denom;
+          }
         }
       }
     });

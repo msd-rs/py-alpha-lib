@@ -1184,7 +1184,7 @@ def RANK[A: np.ndarray | list[np.ndarray]](
   Calculate rank in a sliding window with size `periods`
   
   Uses min-rank method for ties (same as pandas rankdata method='min').
-  NaN values are treated as larger than all non-NaN values.
+  Current NaN values produce NaN output.
   """
   if isinstance(input, list):
     input = [_to_f64(x) for x in input]

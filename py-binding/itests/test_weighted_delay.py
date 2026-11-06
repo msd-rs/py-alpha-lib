@@ -20,9 +20,8 @@ WEIGHTED_DELAY 对最近 `periods` 个**滞后**值做线性加权平均, 越近
 SKIP_NAN 的压紧 / Group / start-end 机制: Group 通过按 chunk 分块计算,
 start/end 只校验 [start, end) 区间 (滞后窗口仍可引用 start 之前的数据).
 不设置 ``FLAG_SKIP_NAN`` 时, 滞后窗口内任一 nan 都会使结果为 nan; 设置后
-理想语义是 nan 完全不参与运算 (有效值压紧后计算), 当前 Rust 实现没有区分
-该 flag, 因此 ``test_weighted_delay_skip_nan_*`` 系列用例会失败并被保留,
-用于暴露实现差异, 不应为了让测试通过而修改基准.
+语义是 nan 完全不参与运算 (有效值压紧后计算), Rust 实现已支持该 flag,
+与参考实现一致.
 
 场景与结果示例
 --------------
@@ -55,7 +54,6 @@ start/end 只校验 [start, end) 区间 (滞后窗口仍可引用 start 之前�
 
 4. ``FLAG_SKIP_NAN`` 的理想语义: 压紧有效值
    [1, 2, 3, 5, 6, 7, 8, 9, 10] 后按上式计算, nan 位置仍为 nan.
-   当前实现仍按原始滞后窗口计算, 因此测试保留失败.
 
 5. ``groups`` 按 group-major 切块独立计算, 每块前 k 个位置为 nan::
 

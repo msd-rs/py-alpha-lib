@@ -20,9 +20,8 @@ ENTROPY 在最近 `periods` 个值构成的窗口中, 先把有效值按 [min, m
 的压紧 / Group / start-end 机制: Group 通过按 chunk 分块计算, start/end 只
 校验 [start, end) 区间 (窗口仍可引用 start 之前的数据).
 
-理想语义下 ``FLAG_SKIP_NAN`` 应把有效值压紧后再计算, nan 位置输出 nan.
-当前 Rust 实现没有区分该 flag, 因此 ``test_entropy_skip_nan_*`` 系列用例
-会失败并被保留, 用于暴露实现差异, 不应为了让测试通过而修改基准.
+理想语义下 ``FLAG_SKIP_NAN`` 把有效值压紧后再计算, nan 位置输出 nan.
+Rust 实现通过 ``SkipNanWindow`` 支持了该 flag, 与参考实现一致.
 
 场景与结果示例
 --------------

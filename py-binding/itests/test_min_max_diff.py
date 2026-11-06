@@ -18,10 +18,9 @@ MIN_MAX_DIFF 是最近 `periods` 个值的最大值与最小值之差::
 参考实现 ``_range_ref`` 只在无 nan 数据上用 pandas rolling 计算, 不实现
 SKIP_NAN / Group / start-end 机制: Group 通过按 chunk 分块计算, start/end
 只校验 [start, end) 区间, 窗口本身仍可引用 start 之前的数据. 不设置
-``FLAG_SKIP_NAN`` 时窗口内出现 nan 会污染整个窗口; 设置后理想语义是 nan
-完全不参与运算 (有效值压紧后计算), 当前 Rust 实现没有区分该 flag, 因此
-``test_min_max_diff_skip_nan_*`` 系列用例会失败并被保留, 用于暴露实现差异,
-不应为了让测试通过而修改基准.
+``FLAG_SKIP_NAN`` 时窗口内出现 nan 会污染整个窗口; 设置后语义是 nan
+完全不参与运算 (有效值压紧后计算), Rust 实现通过 ``SkipNanWindow``
+支持了该 flag, 与参考实现一致.
 
 场景与结果示例
 --------------
@@ -55,8 +54,7 @@ SKIP_NAN / Group / start-end 机制: Group 通过按 chunk 分块计算, start/e
 
 4. ``FLAG_SKIP_NAN`` 的理想语义: nan 完全不参与运算, 压紧后的有效值为
    [1, 2, 3, 5, 6, 7, 8, 9, 10], 其 3 周期极差依次为
-   [0, 1, 2, 3, 3, 2, 2, 2, 2], nan 位置仍为 nan. 当前实现仍按原始窗口
-   计算, 因此测试保留失败.
+   [0, 1, 2, 3, 3, 2, 2, 2, 2], nan 位置仍为 nan.
 
 5. ``groups`` 把一维数据按 group-major 切块独立计算, 每块重新 warm-up::
 

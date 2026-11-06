@@ -21,9 +21,8 @@ SKIP_NAN 的压紧 / Group / start-end 机制: Group 通过按 chunk 分块计�
 / end 只校验 [start, end) 区间 (窗口本身仍可引用 start 之前的数据).
 
 理想语义下 ``FLAG_SKIP_NAN`` 应让 nan 完全不参与运算: 有效位置上的结果等于
-把有效值压紧后跑参考实现. 当前 Rust 实现没有区分该 flag (窗口始终按原始
-位置取, 只是排除 nan), 因此 :func:`test_quantile_skip_nan_ignores_nan_values`
-等用例会失败并被保留, 用于暴露实现差异, 不应为了让测试通过而修改基准.
+把有效值压紧后跑参考实现. Rust 实现通过 ``SkipNanWindow`` 支持了该 flag,
+与参考实现一致.
 
 场景与结果示例
 --------------

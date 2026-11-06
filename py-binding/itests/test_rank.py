@@ -20,11 +20,10 @@ Group / start-end 机制: Group 通过按 chunk 分块计算, start/end 只校�
 ``Context`` 语义一致). 理想语义下 nan 是缺失值: 窗口内出现 nan 会污染结果,
 ``FLAG_SKIP_NAN`` 应把有效值压紧后再计算, nan 位置输出 nan.
 
-当前 Rust 实现有两处与上述算法逻辑不一致, 相关用例保留失败以暴露差异,
-不应为了让测试通过而修改基准:
-
-* 无论 flags 如何, 窗口内 nan 都会参与计数, nan 位置返回窗口大小而不是 nan;
-* ``start`` 之前的数据不进入窗口, [start, end) 开头几个值会从 1 重新计数.
+Rust 实现已对齐上述算法逻辑:
+* nan 是缺失值: nan 位置输出 nan, 未设置 FLAG_SKIP_NAN 时窗口内出现 nan 会污染结果;
+* 设置 FLAG_SKIP_NAN 后把有效值压紧后再计算;
+* start 之前的数据正确进入窗口预填充.
 
 场景与结果示例
 --------------
@@ -61,13 +60,12 @@ Group / start-end 机制: Group 通过按 chunk 分块计算, start/end 只校�
     >>> np.round(al.RANK(x, 4), 3)
     array([1., 2., 3., 4., 4., 1., 2., 3., 4., 4.])
 
-5. ``start`` / ``end`` 只计算 [start, end) 区间, 区间外全部为 nan. 当前实现
-   在 start 处重新累积窗口, 因此前几个值从 1 开始; 按算法逻辑窗口应能引用
+5. ``start`` / ``end`` 只计算 [start, end) 区间, 区间外全部为 nan, 窗口正确引用
    start 之前的数据 (输出 4)::
 
     >>> al.set_ctx(start=3, end=8, groups=1, flags=0)
     >>> np.round(al.RANK(x, 4), 3)
-    array([nan, nan, nan,  1.,  2.,  3.,  4.,  4., nan, nan])
+    array([nan, nan, nan,  4.,  4.,  4.,  4.,  4., nan, nan])
 
 6. ``periods=1`` 时窗口只含当前值, 名次恒为 1, 与 ctx 无关::
 
