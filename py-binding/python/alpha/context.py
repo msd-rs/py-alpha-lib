@@ -25,10 +25,76 @@ Usage:
 """
 
 import logging
+from dataclasses import dataclass
+from typing import Optional
 import numpy as np
 import alpha
 
 logger = logging.getLogger(__name__)
+
+
+class ContextToken:
+  """Token representing an active Context session, used to restore the previous state."""
+
+  def __init__(self, prev_state: tuple[int, int, int, int]):
+    self._prev_state = prev_state
+    self._active = True
+
+  def restore(self) -> None:
+    """Restore the previous context state."""
+    if self._active:
+      alpha.reset_ctx(*self._prev_state)
+      self._active = False
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    self.restore()
+
+
+@dataclass
+class Context:
+  """Calculation context for alpha factor algorithms.
+
+  Holds computation state such as `start`, `end`, `groups`, and `flags`.
+  Supports usage as a context manager (`with ctx:`) to apply this state
+  to the thread-local algorithm environment and automatically restore
+  the previous state on exit.
+  """
+
+  start: int = 0
+  end: int = 0
+  groups: int = 1
+  flags: int = 0
+
+  def apply(self) -> None:
+    """Set this context as the current active thread-local context."""
+    alpha.reset_ctx(self.start, self.end, self.groups, self.flags)
+
+  def activate(self) -> ContextToken:
+    """Activate this context and return a token that restores the prior state upon `restore()`."""
+    prev = alpha.get_ctx()
+    self.apply()
+    return ContextToken(prev)
+
+  def __enter__(self) -> "Context":
+    if not hasattr(self, "_token_stack"):
+      self._token_stack = []
+    token = self.activate()
+    self._token_stack.append(token)
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    if hasattr(self, "_token_stack") and self._token_stack:
+      token = self._token_stack.pop()
+      token.restore()
+
+  @classmethod
+  def current(cls) -> "Context":
+    """Capture and return the current active thread-local context."""
+    s, e, g, f = alpha.get_ctx()
+    return cls(start=s, end=e, groups=g, flags=f)
 
 
 def _returns(a: np.ndarray) -> np.ndarray:
@@ -119,8 +185,9 @@ class ExecContext:
         except Exception:
           pass
 
+    self.algo_ctx = Context(groups=securities if securities > 0 else 1)
     if securities > 0:
-      alpha.set_ctx(groups=securities)
+      self.algo_ctx.apply()
 
     # Extract OHLCV arrays, filling incomplete panels with NaN
     _cols = ["open", "high", "low", "close", "vol", "vwap"]
@@ -171,6 +238,12 @@ class ExecContext:
       self.HD = self.HIGH - alpha.REF(self.HIGH, 1)
       self.LD = self.LOW - alpha.REF(self.LOW, 1)
       self._SEQUENCE = np.tile(np.arange(1, trades + 1, dtype=np.float64), securities)
+
+  def __enter__(self):
+    return self.algo_ctx.__enter__()
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    return self.algo_ctx.__exit__(exc_type, exc_val, exc_tb)
 
   def __call__(self, name: str) -> np.ndarray:
     if name.startswith("ADV"):

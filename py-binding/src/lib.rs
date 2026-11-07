@@ -1,12 +1,19 @@
 // Copyright 2026 MSD-RS Project LiJia
 // SPDX-License-Identifier: BSD-2-Clause
 
-use std::sync::{LazyLock, RwLock};
+use std::cell::Cell;
 
 use alpha_algo::Context;
 use pyo3::prelude::*;
 
-static _ALGO_CTX_: LazyLock<RwLock<Context>> = LazyLock::new(|| RwLock::new(Context::default()));
+thread_local! {
+  static _ALGO_CTX_: Cell<Context> = const { Cell::new(Context {
+    _start: 0,
+    _end: 0,
+    _groups: 1,
+    _flags: 0,
+  }) };
+}
 
 mod algo_impl {
   use log::debug;
@@ -19,10 +26,7 @@ mod algo_impl {
   use alpha_algo::*;
 
   fn ctx<'py>(_py: Python<'py>) -> Context {
-    let ctx = match _ALGO_CTX_.try_read() {
-      Ok(ctx) => ctx.clone(),
-      Err(_e) => Context::default(),
-    };
+    let ctx = _ALGO_CTX_.with(|c| c.get());
     debug!("current {}", ctx);
     ctx
   }
@@ -36,16 +40,41 @@ mod algo_impl {
     groups: Option<u32>,
     flags: Option<u64>,
   ) -> PyResult<()> {
-    match _ALGO_CTX_.try_write() {
-      Ok(mut ctx) => {
-        start.map(|s| ctx._start = s);
-        end.map(|e| ctx._end = e);
-        groups.map(|g| ctx._groups = g);
-        flags.map(|f| ctx._flags = f);
-        Ok(())
-      }
-      Err(_e) => Err(PyValueError::new_err("failed to set context")),
-    }
+    _ALGO_CTX_.with(|c| {
+      let mut ctx = c.get();
+      start.map(|s| ctx._start = s);
+      end.map(|e| ctx._end = e);
+      groups.map(|g| ctx._groups = g);
+      flags.map(|f| ctx._flags = f);
+      c.set(ctx);
+    });
+    Ok(())
+  }
+
+  #[pyfunction]
+  pub fn get_ctx<'py>(_py: Python<'py>) -> (i32, i32, u32, u64) {
+    let ctx = _ALGO_CTX_.with(|c| c.get());
+    (ctx._start, ctx._end, ctx._groups, ctx._flags)
+  }
+
+  #[pyfunction]
+  #[pyo3(signature = (/, start=0, end=0, groups=1, flags=0))]
+  pub fn reset_ctx<'py>(
+    _py: Python<'py>,
+    start: i32,
+    end: i32,
+    groups: u32,
+    flags: u64,
+  ) -> PyResult<()> {
+    _ALGO_CTX_.with(|c| {
+      c.set(Context {
+        _start: start,
+        _end: end,
+        _groups: groups,
+        _flags: flags,
+      });
+    });
+    Ok(())
   }
 
   /// Exponential Moving Average (variant of EMA)
@@ -182,6 +211,8 @@ fn _algo(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
   m.add_function(wrap_pyfunction!(ema, m)?)?;
   m.add_function(wrap_pyfunction!(set_ctx, m)?)?;
+  m.add_function(wrap_pyfunction!(get_ctx, m)?)?;
+  m.add_function(wrap_pyfunction!(reset_ctx, m)?)?;
   register_functions(m)?;
   Ok(())
 }

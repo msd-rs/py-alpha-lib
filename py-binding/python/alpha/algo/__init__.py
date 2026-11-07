@@ -3,4 +3,4 @@
 
 from .algo import EMA
 from .algo_gen import *
-from ._algo import set_ctx
+from ._algo import set_ctx, get_ctx, reset_ctx

@@ -3,7 +3,7 @@
 
 from .algo import *
 from .lang import *
-from .context import ExecContext
+from .context import Context, ContextToken, ExecContext
 
 
 # skip nan values during computations
