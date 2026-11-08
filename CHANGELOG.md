@@ -1,5 +1,12 @@
 # ChangeLog
 
+## [0.4.1] - 2026-11-08
+
+
+## Added:
+
+- Python: improve context handling 
+
 
 ## [0.4.0] - 2026-11-06
 
