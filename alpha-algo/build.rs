@@ -2528,6 +2528,11 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
   writeln!(file, "")?;
   writeln!(file, "# THIS FILE IS AUTO-GENERATED, DO NOT EDIT")?;
   writeln!(file, "")?;
+  writeln!(
+    file,
+    "\"\"\"Auto-generated technical indicator and alpha factor algorithms.\"\"\""
+  )?;
+  writeln!(file, "")?;
   writeln!(file, "import numpy as np")?;
   writeln!(file, "from . import _algo")?;
   writeln!(file, "")?;
@@ -2559,6 +2564,8 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
   writeln!(file, "  return a.astype(np.uint64)")?;
   writeln!(file, "")?;
 
+  let mut all_names = Vec::new();
+
   for func in functions {
     // Generate docstring
     let doc = func
@@ -2587,6 +2594,8 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
       // Need at least 2 arrays (output and input)
       continue;
     }
+
+    all_names.push(py_func_name.clone());
 
     if arrays.len() == 6 {
       let r_name = arrays[0].0;
@@ -2997,6 +3006,12 @@ fn build_algo_py(functions: &[TaFunc]) -> Result<()> {
     writeln!(file, "    return {}", r_name)?;
     writeln!(file, "")?;
   }
+
+  writeln!(file, "__all__ = [")?;
+  for name in &all_names {
+    writeln!(file, "  \"{}\",", name)?;
+  }
+  writeln!(file, "]")?;
 
   Ok(())
 }

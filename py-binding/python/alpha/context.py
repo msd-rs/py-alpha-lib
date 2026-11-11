@@ -32,6 +32,8 @@ import alpha
 
 logger = logging.getLogger(__name__)
 
+__all__ = ["Context", "ContextToken", "ExecContext"]
+
 
 class ContextToken:
   """Token representing an active Context session, used to restore the previous state."""

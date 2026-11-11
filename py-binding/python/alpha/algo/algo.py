@@ -1,8 +1,12 @@
 # Copyright 2026 MSD-RS Project LiJia
 # SPDX-License-Identifier: BSD-2-Clause
 
+"""Hand-written technical indicator and alpha factor algorithms."""
+
 import numpy as np
 from . import _algo
+
+__all__ = ["EMA"]
 
 
 def EMA(
