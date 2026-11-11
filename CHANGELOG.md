@@ -1,5 +1,11 @@
 # ChangeLog
 
+## [0.4.2] - 2026-11-08
+
+## Added:
+
+- Python: Make pydoc happy
+
 ## [0.4.1] - 2026-11-08
 
 
