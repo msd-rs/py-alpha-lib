@@ -5,6 +5,8 @@ __pycache__/
 .pytest_cache/
 *.py[cod]
 
+Cargo.lock
+
 # C extensions
 *.so
 
