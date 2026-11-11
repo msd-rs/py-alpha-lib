@@ -6,6 +6,8 @@ Alpha Library: A high-performance rolling window calculation library implemented
 
 Terms:
   - The `A` type in functions below is `numpy.ndarray`
+  - FLAG_SKIP_NAN: a flag used in Context that ignore NaN value when computing
+  - FLAG_STRICTLY_CYCLE: a flag use in Context that without fallback compute when window size not enough
 
 """
 
@@ -16,9 +18,9 @@ from .lang import __all__ as _lang_all
 from .context import Context, ContextToken, ExecContext
 from .context import __all__ as _context_all
 
-# skip nan values during computations
+""" skip nan values during computations """
 FLAG_SKIP_NAN: int = 1
-# strictly cycle over the data
+""" strictly cycle over the data """
 FLAG_STRICTLY_CYCLE: int = 2
 
 __all__ = (
