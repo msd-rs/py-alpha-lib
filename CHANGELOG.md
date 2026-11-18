@@ -1,5 +1,12 @@
 # ChangeLog
 
+## [0.5.0] - 2026-11-18
+
+## Added:
+
+- A Native SimAccount which can do buy/sell parallel witch multiple stocks
+
+
 ## [0.4.2] - 2026-11-08
 
 ## Added:
