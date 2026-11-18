@@ -1,5 +1,6 @@
 mod algo;
 mod join;
+pub mod sim;
 
 pub use algo::*;
 pub use join::*;

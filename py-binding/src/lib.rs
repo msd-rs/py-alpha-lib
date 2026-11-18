@@ -6,6 +6,8 @@ use std::cell::Cell;
 use alpha_algo::Context;
 use pyo3::prelude::*;
 
+mod sim;
+
 thread_local! {
   static _ALGO_CTX_: Cell<Context> = const { Cell::new(Context {
     _start: 0,
@@ -214,5 +216,6 @@ fn _algo(m: &Bound<'_, PyModule>) -> PyResult<()> {
   m.add_function(wrap_pyfunction!(get_ctx, m)?)?;
   m.add_function(wrap_pyfunction!(reset_ctx, m)?)?;
   register_functions(m)?;
+  sim::register_sim(m)?;
   Ok(())
 }
