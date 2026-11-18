@@ -251,4 +251,90 @@ mod tests {
     engine.update_mark_to_market(2, &[9.0, 10.0], &mut out_cash, &mut out_assets, &mut out_ror);
     assert!((out_assets[2] - 10_000.0).abs() < 1e-9);
   }
+
+  #[test]
+  fn test_portfolio_engine_holding_rors_and_step_bar() {
+    let prices_all = [10.0, 10.0, 12.0, 10.0, 10.0, 10.0];
+    let mut engine = PortfolioEngine::new(
+      2,
+      3,
+      10_000.0,
+      100,
+      0.0,
+      0.0,
+      FeeSchedule::default(),
+      vec![true, true],
+      None,
+      None,
+      None,
+    )
+    .unwrap();
+
+    let mut out_actions = vec![0; 6];
+    let mut out_sh = vec![0.0; 6];
+    let mut out_cash = vec![0.0; 3];
+    let mut out_assets = vec![0.0; 3];
+    let mut out_ror = vec![0.0; 3];
+
+    let sell_all = [0.0; 6];
+    let buy_all = [0.0, 0.5, 0.0, 0.0, 0.0, 0.0];
+
+    engine
+      .step_bar(
+        1,
+        1,
+        1,
+        false,
+        &sell_all,
+        &buy_all,
+        None,
+        None,
+        &prices_all,
+        &prices_all,
+        None,
+        None,
+        None,
+        None,
+        &mut out_actions,
+        &mut out_sh,
+        &mut out_cash,
+        &mut out_assets,
+        &mut out_ror,
+      )
+      .unwrap();
+    assert_eq!(engine.shares, vec![500.0, 0.0]);
+
+    let mut rors = vec![0.0; 2];
+    engine.holding_rors(&prices_all, 2, &mut rors).unwrap();
+    assert!((rors[0] - 0.2).abs() < 1e-9);
+    assert_eq!(rors[1], 0.0);
+
+    // Explicit sell + rebalance conflict on bar 2
+    let sell_conflict = [0.0, 0.0, 1.0, 0.0, 0.0, 0.0];
+    engine
+      .step_bar(
+        2,
+        2,
+        2,
+        false,
+        &sell_conflict,
+        &[0.0; 6],
+        Some(&[0.5, 0.5]),
+        None,
+        &prices_all,
+        &prices_all,
+        None,
+        None,
+        None,
+        None,
+        &mut out_actions,
+        &mut out_sh,
+        &mut out_cash,
+        &mut out_assets,
+        &mut out_ror,
+      )
+      .unwrap();
+    assert_eq!(engine.shares[0], 0.0);
+    assert!(engine.shares[1] > 0.0);
+  }
 }

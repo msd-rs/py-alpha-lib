@@ -429,6 +429,23 @@ class PortfolioEngine:
   def deducted(self) -> float:
     return self._inner.deducted
 
+  @property
+  def market_value(self) -> float:
+    return self._inner.market_value
+
+  @property
+  def asset(self) -> float:
+    return self._inner.asset
+
+  def set_tradable_mask(self, tradable_mask: np.ndarray) -> None:
+    self._inner.set_tradable_mask(_to_contiguous(tradable_mask, np.bool_))
+
+  def state_of(self, g: int) -> tuple[float, float, float, float, float, int]:
+    return self._inner.state_of(g)
+
+  def holding_rors(self, price: np.ndarray, bar: int) -> np.ndarray:
+    return self._inner.holding_rors(price, bar)
+
   def shares(self) -> np.ndarray:
     return self._inner.shares()
 
@@ -466,6 +483,61 @@ class PortfolioEngine:
     out_ror: np.ndarray,
   ) -> None:
     self._inner.update_mark_to_market(bar, mark_prices, out_cash, out_assets, out_ror)
+
+  def update_mark_to_market_strided(
+    self,
+    bar: int,
+    mark_prices_all: np.ndarray,
+    out_cash: np.ndarray,
+    out_assets: np.ndarray,
+    out_ror: np.ndarray,
+  ) -> None:
+    self._inner.update_mark_to_market_strided(bar, mark_prices_all, out_cash, out_assets, out_ror)
+
+  def step_bar(
+    self,
+    bar: int,
+    sig_i: int,
+    ts_val: int,
+    skip_trade: bool,
+    sell_percents_all: np.ndarray,
+    buy_percents_all: np.ndarray,
+    deal_prices_all: np.ndarray,
+    mark_prices_all: np.ndarray,
+    out_actions: np.ndarray,
+    out_action_shares: np.ndarray,
+    out_cash: np.ndarray,
+    out_assets: np.ndarray,
+    out_ror: np.ndarray,
+    *,
+    target_weights_bar: np.ndarray | None = None,
+    tolerance: float | None = None,
+    limited_all: np.ndarray | None = None,
+    universe_mask: np.ndarray | None = None,
+    raw_prices_all: np.ndarray | None = None,
+    fw_prices_all: np.ndarray | None = None,
+  ) -> None:
+    self._inner.step_bar(
+      bar,
+      sig_i,
+      int(ts_val),
+      bool(skip_trade),
+      sell_percents_all,
+      buy_percents_all,
+      deal_prices_all,
+      mark_prices_all,
+      out_actions,
+      out_action_shares,
+      out_cash,
+      out_assets,
+      out_ror,
+      target_weights_bar=target_weights_bar,
+      tolerance=tolerance,
+      limited_all=limited_all,
+      universe_mask=universe_mask,
+      raw_prices_all=raw_prices_all,
+      fw_prices_all=fw_prices_all,
+    )
 
   def rebalance_step(
     self,

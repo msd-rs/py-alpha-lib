@@ -546,6 +546,44 @@ impl PyPortfolioEngine {
     self.inner.deducted
   }
 
+  #[getter]
+  fn market_value(&self) -> f64 {
+    self.inner.market_value()
+  }
+
+  #[getter]
+  fn asset(&self) -> f64 {
+    self.inner.asset()
+  }
+
+  fn set_tradable_mask(&mut self, tradable_mask: PyReadonlyArray1<'_, bool>) -> PyResult<()> {
+    let mask = tradable_mask.as_slice()?.to_vec();
+    self
+      .inner
+      .set_tradable_mask(mask)
+      .map_err(|e| PyValueError::new_err(e.to_string()))
+  }
+
+  fn state_of(&self, g: usize) -> PyResult<(f64, f64, f64, f64, f64, i64)> {
+    self
+      .inner
+      .state_of(g)
+      .map_err(|e| PyValueError::new_err(e.to_string()))
+  }
+
+  fn holding_rors<'py>(
+    &self,
+    py: Python<'py>,
+    price: PyReadonlyArray1<'py, f64>,
+    bar: usize,
+  ) -> PyResult<Bound<'py, PyArray1<f64>>> {
+    let mut out = vec![0.0; self.inner.groups];
+    let p = price.as_slice()?;
+    py.detach(|| self.inner.holding_rors(p, bar, &mut out))
+      .map_err(|e| PyValueError::new_err(e.to_string()))?;
+    Ok(out.into_pyarray(py))
+  }
+
   fn shares<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
     self.inner.shares.clone().into_pyarray(py)
   }
@@ -603,6 +641,113 @@ impl PyPortfolioEngine {
     let oror = out_ror.as_slice_mut()?;
     self.inner.update_mark_to_market(bar, mp, oc, oa, oror);
     Ok(())
+  }
+
+  #[allow(clippy::too_many_arguments)]
+  fn update_mark_to_market_strided<'py>(
+    &mut self,
+    bar: usize,
+    mark_prices_all: PyReadonlyArray1<'py, f64>,
+    mut out_cash: PyReadwriteArray1<'py, f64>,
+    mut out_assets: PyReadwriteArray1<'py, f64>,
+    mut out_ror: PyReadwriteArray1<'py, f64>,
+  ) -> PyResult<()> {
+    let mp = mark_prices_all.as_slice()?;
+    let oc = out_cash.as_slice_mut()?;
+    let oa = out_assets.as_slice_mut()?;
+    let oror = out_ror.as_slice_mut()?;
+    self
+      .inner
+      .update_mark_to_market_strided(bar, mp, oc, oa, oror);
+    Ok(())
+  }
+
+  #[pyo3(signature = (
+    bar,
+    sig_i,
+    ts_val,
+    skip_trade,
+    sell_percents_all,
+    buy_percents_all,
+    deal_prices_all,
+    mark_prices_all,
+    out_actions,
+    out_action_shares,
+    out_cash,
+    out_assets,
+    out_ror,
+    *,
+    target_weights_bar = None,
+    tolerance = None,
+    limited_all = None,
+    universe_mask = None,
+    raw_prices_all = None,
+    fw_prices_all = None,
+  ))]
+  #[allow(clippy::too_many_arguments)]
+  fn step_bar<'py>(
+    &mut self,
+    py: Python<'py>,
+    bar: usize,
+    sig_i: usize,
+    ts_val: i64,
+    skip_trade: bool,
+    sell_percents_all: PyReadonlyArray1<'py, f64>,
+    buy_percents_all: PyReadonlyArray1<'py, f64>,
+    deal_prices_all: PyReadonlyArray1<'py, f64>,
+    mark_prices_all: PyReadonlyArray1<'py, f64>,
+    mut out_actions: PyReadwriteArray1<'py, i32>,
+    mut out_action_shares: PyReadwriteArray1<'py, f64>,
+    mut out_cash: PyReadwriteArray1<'py, f64>,
+    mut out_assets: PyReadwriteArray1<'py, f64>,
+    mut out_ror: PyReadwriteArray1<'py, f64>,
+    target_weights_bar: Option<PyReadonlyArray1<'py, f64>>,
+    tolerance: Option<f64>,
+    limited_all: Option<PyReadonlyArray1<'py, i32>>,
+    universe_mask: Option<PyReadonlyArray1<'py, bool>>,
+    raw_prices_all: Option<PyReadonlyArray1<'py, f64>>,
+    fw_prices_all: Option<PyReadonlyArray1<'py, f64>>,
+  ) -> PyResult<()> {
+    let sp = sell_percents_all.as_slice()?;
+    let bp = buy_percents_all.as_slice()?;
+    let dp = deal_prices_all.as_slice()?;
+    let mp = mark_prices_all.as_slice()?;
+    let tw = target_weights_bar.as_ref().map(|a| a.as_slice()).transpose()?;
+    let lim = limited_all.as_ref().map(|a| a.as_slice()).transpose()?;
+    let umask = universe_mask.as_ref().map(|a| a.as_slice()).transpose()?;
+    let rpa = raw_prices_all.as_ref().map(|a| a.as_slice()).transpose()?;
+    let fpa = fw_prices_all.as_ref().map(|a| a.as_slice()).transpose()?;
+
+    let oact = out_actions.as_slice_mut()?;
+    let osh = out_action_shares.as_slice_mut()?;
+    let oc = out_cash.as_slice_mut()?;
+    let oa = out_assets.as_slice_mut()?;
+    let oror = out_ror.as_slice_mut()?;
+
+    py.detach(|| {
+      self.inner.step_bar(
+        bar,
+        sig_i,
+        ts_val,
+        skip_trade,
+        sp,
+        bp,
+        tw,
+        tolerance,
+        dp,
+        mp,
+        lim,
+        umask,
+        rpa,
+        fpa,
+        oact,
+        osh,
+        oc,
+        oa,
+        oror,
+      )
+    })
+    .map_err(|e| PyValueError::new_err(e.to_string()))
   }
 
   #[pyo3(signature = (
