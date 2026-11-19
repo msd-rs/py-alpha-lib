@@ -1,5 +1,11 @@
 # ChangeLog
 
+## [0.5.1] - 2026-11-19
+
+## Added:
+
+- A Native Portfolio SimAccount.
+
 ## [0.5.0] - 2026-11-18
 
 ## Added:
