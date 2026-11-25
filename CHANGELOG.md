@@ -1,5 +1,15 @@
 # ChangeLog
 
+## [0.5.2] - 2026-11-25
+
+## Added:
+
+- **CC_WINSORIZE_MAD** Cross-sectional MAD winsorization across groups at each time step.  Clips finite values in each cross-section to ``[median - 1.4826 * mad_k * MAD, median + 1.4826 * mad_k * MAD]``. Zero-MAD cross-sections (``1.4826 * mad_k * MAD <= 1e-12``) preserve finite values unchanged. Non-finite inputs (NaN/Inf) produce NaN output.
+- **CC_WINSORIZE_PCT** Cross-sectional percentile winsorization across groups at each time step.  Clips finite values in each cross-section to the linear-interpolated ``[pct_low, pct_high]`` quantiles (``0.0 <= pct_low < pct_high <= 1.0``). Non-finite inputs (NaN/Inf) produce NaN output.
+- **CC_WINSORIZE_SIGMA** Cross-sectional standard-deviation (sigma) winsorization across groups at each time step.  Clips finite values in each cross-section to ``[mean - sigma_k * std, mean + sigma_k * std]`` using population standard deviation (``ddof = 0``). Degenerate cross-sections (``cnt <= 1`` or ``std <= 1e-12``) preserve finite values unchanged. Non-finite inputs produce NaN.
+
+
+
 ## [0.5.1] - 2026-11-19
 
 ## Added:
