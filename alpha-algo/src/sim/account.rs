@@ -16,6 +16,65 @@ fn is_valid_price(p: f64) -> bool {
 }
 
 #[inline]
+pub(crate) fn resolve_adj_factors(
+  raw_prices: &[f64],
+  fw_prices: &[f64],
+  off: usize,
+  t: usize,
+) -> Option<(f64, f64, f64)> {
+  let idx = off + t;
+  if idx >= raw_prices.len() || idx >= fw_prices.len() {
+    return None;
+  }
+  let raw_cur = raw_prices[idx];
+  let fw_cur = fw_prices[idx];
+  if !is_valid_price(raw_cur) || !is_valid_price(fw_cur) {
+    return None;
+  }
+  let f_cur = fw_cur / raw_cur;
+  let mut f_prev = f_cur;
+  let mut prev_raw = 0.0;
+  for k in (0..t).rev() {
+    let p_idx = off + k;
+    let rp = raw_prices[p_idx];
+    let fp = fw_prices[p_idx];
+    if is_valid_price(rp) && is_valid_price(fp) {
+      prev_raw = rp;
+      f_prev = fp / rp;
+      break;
+    }
+  }
+  Some((f_prev, f_cur, prev_raw))
+}
+
+#[inline]
+pub(crate) fn update_adj_cost_for_paid_rights(
+  adj_cost: f64,
+  old_shares: f64,
+  new_shares: f64,
+  actual_r: f64,
+  r_price: f64,
+  div: f64,
+  trans: f64,
+  adj_info: Option<(f64, f64, f64)>,
+) -> f64 {
+  if new_shares <= 0.0 || actual_r <= 0.0 || r_price <= 0.0 || r_price.is_nan() {
+    return adj_cost;
+  }
+  let Some((f_prev, f_cur, prev_raw)) = adj_info else {
+    return adj_cost;
+  };
+  let mut step_factor = if f_prev > 0.0 { f_cur / f_prev } else { 1.0 };
+  if div > 0.0 && !div.is_nan() && prev_raw > div {
+    step_factor *= (prev_raw - div) / prev_raw;
+  }
+  if trans > 0.0 && !trans.is_nan() {
+    step_factor /= 1.0 + trans;
+  }
+  (old_shares * adj_cost * step_factor + actual_r * r_price * f_cur) / new_shares
+}
+
+#[inline]
 fn from_cash(budget: f64, price: f64, unit: u64) -> f64 {
   if price <= 0.0 || price.is_nan() || budget <= 0.0 {
     return 0.0;
@@ -172,6 +231,7 @@ impl AccountState {
     trans: f64,
     r_share: f64,
     r_price: f64,
+    adj_info: Option<(f64, f64, f64)>,
   ) {
     if self.shares <= 0.0 {
       return;
@@ -187,7 +247,6 @@ impl AccountState {
       if self.shares > 0.0 {
         let ratio = old_shares / self.shares;
         self.raw_cost_price *= ratio;
-        self.adj_cost_price *= ratio;
       }
     }
     if r_share > 0.0 && !r_share.is_nan() {
@@ -206,13 +265,22 @@ impl AccountState {
         (max_r, 0.0)
       };
       if actual_r > 0.0 {
-        let old_cost = self.shares * self.raw_cost_price;
-        let old_raw_cost = self.raw_cost_price;
+        let old_shares = self.shares;
+        let old_cost = old_shares * self.raw_cost_price;
         self.shares += actual_r;
         if self.shares > 0.0 {
           self.raw_cost_price = (old_cost + right_cost) / self.shares;
-          if old_raw_cost > 0.0 {
-            self.adj_cost_price *= self.raw_cost_price / old_raw_cost;
+          if right_cost > 0.0 {
+            self.adj_cost_price = update_adj_cost_for_paid_rights(
+              self.adj_cost_price,
+              old_shares,
+              self.shares,
+              actual_r,
+              r_price,
+              div,
+              trans,
+              adj_info,
+            );
           }
         }
       }
@@ -366,6 +434,7 @@ impl AccountState {
     trans: f64,
     r_share: f64,
     r_price: f64,
+    adj_info: Option<(f64, f64, f64)>,
     apply_corp: bool,
     buy_p: f64,
     sell_p: f64,
@@ -381,7 +450,7 @@ impl AccountState {
   ) {
     // 1. Corporate actions at bar start if holding shares (unless already pre-applied)
     if apply_corp {
-      self.apply_corporate_actions(div, trans, r_share, r_price);
+      self.apply_corporate_actions(div, trans, r_share, r_price, adj_info);
     }
 
     let has_risk = cfg.risk.stop_loss.is_some()
@@ -600,6 +669,11 @@ pub fn sim_accounts(
         let r_share = rs_g.map_or(0.0, |s| s[t]);
         let r_price = rp_g.map_or(0.0, |s| s[t]);
         let fw_p = fw_g.map(|s| s[t]);
+        let adj_info = if r_share > 0.0 && !r_share.is_nan() && r_price > 0.0 && !r_price.is_nan() {
+          fw_g.and_then(|fw| resolve_adj_factors(price_g, fw, 0, t))
+        } else {
+          None
+        };
 
         state.step_one_bar_with_corp_flag(
           g as i32,
@@ -613,6 +687,7 @@ pub fn sim_accounts(
           trans,
           r_share,
           r_price,
+          adj_info,
           true,
           buy_p,
           sell_p,
@@ -692,6 +767,7 @@ impl AccountBatch {
 
   /// Apply corporate actions for bar `t` ahead of strategy `execute()` so
   /// `holding_ror()` and `position()` reflect ex-dividend/ex-split adjustments.
+  #[allow(clippy::too_many_arguments)]
   pub fn apply_corporate_actions_bar(
     &mut self,
     t: usize,
@@ -699,6 +775,8 @@ impl AccountBatch {
     transfer_shares: Option<&[f64]>,
     right_shares: Option<&[f64]>,
     right_price: Option<&[f64]>,
+    raw_prices: Option<&[f64]>,
+    fw_prices: Option<&[f64]>,
   ) -> Result<(), Error> {
     if t >= self.bars {
       return Err(Error::InvalidParameter(format!(
@@ -715,12 +793,20 @@ impl AccountBatch {
         if state.shares <= 0.0 {
           continue;
         }
-        let idx = g * bars + t;
+        let off = g * bars;
+        let idx = off + t;
         let div = dividend.map_or(0.0, |s| s[idx]);
         let trans = transfer_shares.map_or(0.0, |s| s[idx]);
         let r_share = right_shares.map_or(0.0, |s| s[idx]);
         let r_price = right_price.map_or(0.0, |s| s[idx]);
-        state.apply_corporate_actions(div, trans, r_share, r_price);
+        let adj_info = if r_share > 0.0 && !r_share.is_nan() && r_price > 0.0 && !r_price.is_nan() {
+          raw_prices
+            .zip(fw_prices)
+            .and_then(|(rp, fp)| resolve_adj_factors(rp, fp, off, t))
+        } else {
+          None
+        };
+        state.apply_corporate_actions(div, trans, r_share, r_price, adj_info);
       }
     }
     self.corp_applied_bar = Some(t);
@@ -785,6 +871,19 @@ impl AccountBatch {
         (0.0, 0.0)
       };
 
+      let adj_info = if apply_corp
+        && r_share > 0.0
+        && !r_share.is_nan()
+        && r_price > 0.0
+        && !r_price.is_nan()
+      {
+        market
+          .fw_price
+          .and_then(|fp| resolve_adj_factors(market.price, fp, off, t))
+      } else {
+        None
+      };
+
       state.step_one_bar_with_corp_flag(
         g as i32,
         t,
@@ -797,6 +896,7 @@ impl AccountBatch {
         trans,
         r_share,
         r_price,
+        adj_info,
         apply_corp,
         buy_p,
         sell_p,

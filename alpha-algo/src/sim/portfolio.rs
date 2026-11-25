@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 use crate::algo::Error;
-use crate::sim::account::TradeEvents;
+use crate::sim::account::{TradeEvents, resolve_adj_factors, update_adj_cost_for_paid_rights};
 use crate::sim::config::{ACTION_BUY, ACTION_SELL, FeeSchedule};
 
 #[inline]
@@ -194,6 +194,8 @@ impl PortfolioEngine {
     transfer_shares: Option<&[f64]>,
     right_shares: Option<&[f64]>,
     right_price: Option<&[f64]>,
+    raw_prices: Option<&[f64]>,
+    fw_prices: Option<&[f64]>,
   ) {
     if t >= self.bars {
       return;
@@ -207,7 +209,8 @@ impl PortfolioEngine {
       if sh <= 0.0 {
         continue;
       }
-      let idx = g * self.bars + t;
+      let off = g * self.bars;
+      let idx = off + t;
       let div = dividend.map_or(0.0, |s| s[idx]);
       let trans = transfer_shares.map_or(0.0, |s| s[idx]);
       let r_share = right_shares.map_or(0.0, |s| s[idx]);
@@ -224,7 +227,6 @@ impl PortfolioEngine {
         if self.shares[g] > 0.0 {
           let ratio = old_sh / self.shares[g];
           self.raw_cost_price[g] *= ratio;
-          self.adj_cost_price[g] *= ratio;
         }
       }
       if r_share > 0.0 && !r_share.is_nan() {
@@ -243,13 +245,25 @@ impl PortfolioEngine {
           (max_r, 0.0)
         };
         if actual_r > 0.0 {
-          let old_cost = self.shares[g] * self.raw_cost_price[g];
-          let old_raw_cost = self.raw_cost_price[g];
+          let old_sh = self.shares[g];
+          let old_cost = old_sh * self.raw_cost_price[g];
           self.shares[g] += actual_r;
           if self.shares[g] > 0.0 {
             self.raw_cost_price[g] = (old_cost + right_cost) / self.shares[g];
-            if old_raw_cost > 0.0 {
-              self.adj_cost_price[g] *= self.raw_cost_price[g] / old_raw_cost;
+            if right_cost > 0.0 {
+              let adj_info = raw_prices
+                .zip(fw_prices)
+                .and_then(|(rp, fp)| resolve_adj_factors(rp, fp, off, t));
+              self.adj_cost_price[g] = update_adj_cost_for_paid_rights(
+                self.adj_cost_price[g],
+                old_sh,
+                self.shares[g],
+                actual_r,
+                r_price,
+                div,
+                trans,
+                adj_info,
+              );
             }
           }
         }

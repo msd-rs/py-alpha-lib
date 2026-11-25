@@ -246,7 +246,7 @@ mod tests {
     assert!((engine.cash - 0.0).abs() < 1e-9);
 
     // Bar 2: apply corporate action -> group 0 receives 500 * 1.0 = 500 cash
-    engine.apply_corporate_actions(2, Some(&dividend), None, None, None);
+    engine.apply_corporate_actions(2, Some(&dividend), None, None, None, None, None);
     assert!((engine.cash - 500.0).abs() < 1e-9);
     engine.update_mark_to_market(2, &[9.0, 10.0], &mut out_cash, &mut out_assets, &mut out_ror);
     assert!((out_assets[2] - 10_000.0).abs() < 1e-9);
@@ -336,5 +336,101 @@ mod tests {
       .unwrap();
     assert_eq!(engine.shares[0], 0.0);
     assert!(engine.shares[1] > 0.0);
+  }
+
+  #[test]
+  fn test_adj_cost_price_no_double_ex_rights_and_paid_rights() {
+    // Bar 0: dummy, Bar 1: buy @ 10.0 (bw_factor=1.0),
+    // Bar 2: div=0.5, trans=0.2 (10送2), raw_close=8.0 -> ex_ref=(10-0.5)/1.2=7.9166667, close=10*(8/ex_ref)=10.105263
+    // Bar 3: free rights r_share=0.25, r_price=0.0, raw_close=6.4 -> close stays 10.105263
+    // Bar 4: paid rights r_share=0.2, r_price=5.0, raw_close=ex_ref=(6.4+0.2*5)/1.2=6.1666667 -> close=10.105263
+    let ts = [0i64, 1, 2, 3, 4];
+    let raw_prices = [10.0, 10.0, 8.0, 6.4, (6.4 + 0.2 * 5.0) / 1.2];
+    let ex_ref2 = (10.0 - 0.5) / 1.2;
+    let c2 = 10.0 * (8.0 / ex_ref2);
+    let fw_prices = [10.0, 10.0, c2, c2, c2];
+    let div = [0.0, 0.0, 0.5, 0.0, 0.0];
+    let trans = [0.0, 0.0, 0.2, 0.0, 0.0];
+    let rs = [0.0, 0.0, 0.0, 0.25, 0.2];
+    let rp = [0.0, 0.0, 0.0, 0.0, 5.0];
+    let buy_sig = [0.0, 0.5, 0.0, 0.0, 0.0];
+    let sell_sig = [0.0; 5];
+
+    let market = MarketSlices {
+      groups: 1,
+      bars: 5,
+      ts: &ts,
+      price: &raw_prices,
+      deal_price: &raw_prices,
+      fw_price: Some(&fw_prices),
+      limited: None,
+      dividend: Some(&div),
+      transfer_shares: Some(&trans),
+      right_shares: Some(&rs),
+      right_price: Some(&rp),
+    };
+    let mut cfg = SimConfig::default();
+    cfg.initial_cash = 20_000.0;
+
+    let mut batch = AccountBatch::new(1, 5, cfg.clone()).unwrap();
+    let mut out_assets = vec![0.0; 5];
+    let mut out_ror = vec![0.0; 5];
+    let mut out_ror_hold = vec![0.0; 5];
+    let mut out_actions = vec![0; 5];
+    let mut out_action_shares = vec![0.0; 5];
+
+    for t in 1..5 {
+      batch
+        .apply_corporate_actions_bar(
+          t,
+          Some(&div),
+          Some(&trans),
+          Some(&rs),
+          Some(&rp),
+          Some(&raw_prices),
+          Some(&fw_prices),
+        )
+        .unwrap();
+      if t == 2 || t == 3 {
+        // After split/div (bar 2) and free rights (bar 3), adj_cost_price MUST stay 10.0!
+        assert!((batch.states[0].adj_cost_price - 10.0).abs() < 1e-12);
+      }
+      batch
+        .step_bar(
+          t,
+          &market,
+          &buy_sig,
+          &sell_sig,
+          &mut out_assets,
+          &mut out_ror,
+          &mut out_ror_hold,
+          &mut out_actions,
+          &mut out_action_shares,
+        )
+        .unwrap();
+    }
+
+    // After bar 4 paid rights (r_share=0.2 @ r_price=5.0):
+    // Before bar 4: shares = 1000 * 1.2 * 1.25 = 1500, adj_cost_price = 10.0, raw_close_prev = 6.4, f_prev = c2 / 6.4
+    // At bar 4: actual_r = 300, new_shares = 1800, f_cur = c2 / raw_prices[4]
+    // step_factor = f_cur / f_prev = 6.4 / raw_prices[4]
+    let f_cur4 = c2 / raw_prices[4];
+    let step_factor4 = 6.4 / raw_prices[4];
+    let expected_adj4 = (1500.0 * 10.0 * step_factor4 + 300.0 * 5.0 * f_cur4) / 1800.0;
+    assert!((batch.states[0].adj_cost_price - expected_adj4).abs() < 1e-10);
+    // And sim_accounts fast-path matches AccountBatch identically
+    let (_, snap) = sim_accounts(
+      &market,
+      &cfg,
+      &buy_sig,
+      &sell_sig,
+      &mut out_assets,
+      &mut out_ror,
+      &mut out_ror_hold,
+      &mut out_actions,
+      &mut out_action_shares,
+    )
+    .unwrap();
+    assert!((snap.adj_cost_price[0] - batch.states[0].adj_cost_price).abs() < 1e-12);
   }
 }

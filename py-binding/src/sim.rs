@@ -406,6 +406,8 @@ impl PyAccountBatch {
     transfer_shares = None,
     right_shares = None,
     right_price = None,
+    raw_prices = None,
+    fw_prices = None,
   ))]
   fn apply_corporate_actions_bar<'py>(
     &mut self,
@@ -414,14 +416,18 @@ impl PyAccountBatch {
     transfer_shares: Option<PyReadonlyArray1<'py, f64>>,
     right_shares: Option<PyReadonlyArray1<'py, f64>>,
     right_price: Option<PyReadonlyArray1<'py, f64>>,
+    raw_prices: Option<PyReadonlyArray1<'py, f64>>,
+    fw_prices: Option<PyReadonlyArray1<'py, f64>>,
   ) -> PyResult<()> {
     let div_s = dividend.as_ref().map(|a| a.as_slice()).transpose()?;
     let trans_s = transfer_shares.as_ref().map(|a| a.as_slice()).transpose()?;
     let rs_s = right_shares.as_ref().map(|a| a.as_slice()).transpose()?;
     let rp_s = right_price.as_ref().map(|a| a.as_slice()).transpose()?;
+    let raw_s = raw_prices.as_ref().map(|a| a.as_slice()).transpose()?;
+    let fw_s = fw_prices.as_ref().map(|a| a.as_slice()).transpose()?;
     self
       .inner
-      .apply_corporate_actions_bar(bar, div_s, trans_s, rs_s, rp_s)
+      .apply_corporate_actions_bar(bar, div_s, trans_s, rs_s, rp_s, raw_s, fw_s)
       .map_err(|e| PyValueError::new_err(e.to_string()))
   }
 
@@ -608,6 +614,15 @@ impl PyPortfolioEngine {
     self.inner.entry_bars.clone().into_pyarray(py)
   }
 
+  #[pyo3(signature = (
+    bar,
+    dividend = None,
+    transfer_shares = None,
+    right_shares = None,
+    right_price = None,
+    raw_prices = None,
+    fw_prices = None,
+  ))]
   fn apply_corporate_actions<'py>(
     &mut self,
     bar: usize,
@@ -615,14 +630,18 @@ impl PyPortfolioEngine {
     transfer_shares: Option<PyReadonlyArray1<'py, f64>>,
     right_shares: Option<PyReadonlyArray1<'py, f64>>,
     right_price: Option<PyReadonlyArray1<'py, f64>>,
+    raw_prices: Option<PyReadonlyArray1<'py, f64>>,
+    fw_prices: Option<PyReadonlyArray1<'py, f64>>,
   ) -> PyResult<()> {
     let div_s = dividend.as_ref().map(|a| a.as_slice()).transpose()?;
     let trans_s = transfer_shares.as_ref().map(|a| a.as_slice()).transpose()?;
     let rs_s = right_shares.as_ref().map(|a| a.as_slice()).transpose()?;
     let rp_s = right_price.as_ref().map(|a| a.as_slice()).transpose()?;
+    let raw_s = raw_prices.as_ref().map(|a| a.as_slice()).transpose()?;
+    let fw_s = fw_prices.as_ref().map(|a| a.as_slice()).transpose()?;
     self
       .inner
-      .apply_corporate_actions(bar, div_s, trans_s, rs_s, rp_s);
+      .apply_corporate_actions(bar, div_s, trans_s, rs_s, rp_s, raw_s, fw_s);
     Ok(())
   }
 

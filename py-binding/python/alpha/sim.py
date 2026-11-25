@@ -330,6 +330,8 @@ class AccountBatch:
       transfer_shares=trans,
       right_shares=rs,
       right_price=rp,
+      raw_prices=m.price,
+      fw_prices=m.fw_price,
     )
 
   def step_bar(
@@ -471,8 +473,12 @@ class PortfolioEngine:
     transfer_shares: np.ndarray | None = None,
     right_shares: np.ndarray | None = None,
     right_price: np.ndarray | None = None,
+    raw_prices: np.ndarray | None = None,
+    fw_prices: np.ndarray | None = None,
   ) -> None:
-    self._inner.apply_corporate_actions(bar, dividend, transfer_shares, right_shares, right_price)
+    self._inner.apply_corporate_actions(
+      bar, dividend, transfer_shares, right_shares, right_price, raw_prices, fw_prices
+    )
 
   def update_mark_to_market(
     self,
