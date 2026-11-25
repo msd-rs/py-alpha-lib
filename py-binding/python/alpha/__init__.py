@@ -17,6 +17,8 @@ from .lang import *
 from .lang import __all__ as _lang_all
 from .context import Context, ContextToken, ExecContext
 from .context import __all__ as _context_all
+from .factor import *
+from .factor import __all__ as _factor_all
 
 """ skip nan values during computations """
 FLAG_SKIP_NAN: int = 1
@@ -26,6 +28,7 @@ FLAG_STRICTLY_CYCLE: int = 2
 __all__ = (
   _algo_all
   + _lang_all
+  + _factor_all
   + [
     "FLAG_SKIP_NAN",
     "FLAG_STRICTLY_CYCLE",

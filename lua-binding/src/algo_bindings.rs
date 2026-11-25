@@ -104,6 +104,30 @@ pub fn register_ta_funcs(lua: &Lua) -> LuaResult<()> {
       })?,
     )?;
     lua.globals().set(
+      "CC_WINSORIZE_MAD",
+      lua.create_function(|lua, (input, mad_k): (NumArray, f64)| {
+        let mut r = vec![0.0; input.len()];
+        ta_cc_winsorize_mad::<f64>(&ctx(lua), &mut r, &input, mad_k)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
+      "CC_WINSORIZE_PCT",
+      lua.create_function(|lua, (input, pct_low, pct_high): (NumArray, f64, f64)| {
+        let mut r = vec![0.0; input.len()];
+        ta_cc_winsorize_pct::<f64>(&ctx(lua), &mut r, &input, pct_low, pct_high)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
+      "CC_WINSORIZE_SIGMA",
+      lua.create_function(|lua, (input, sigma_k): (NumArray, f64)| {
+        let mut r = vec![0.0; input.len()];
+        ta_cc_winsorize_sigma::<f64>(&ctx(lua), &mut r, &input, sigma_k)?;
+        Ok(NumArray::from(r))
+      })?,
+    )?;
+    lua.globals().set(
       "CC_ZSCORE",
       lua.create_function(|lua, (input,): (NumArray,)| {
         let mut r = vec![0.0; input.len()];

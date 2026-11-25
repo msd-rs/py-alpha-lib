@@ -1059,6 +1059,325 @@
       Err(PyValueError::new_err("invalid input"))
     }
   }
+  /// Cross-sectional MAD winsorization across groups at each time step.
+  #[pyfunction]
+  fn cc_winsorize_mad<'py>(
+    py: Python<'py>,
+    r: &'py Bound<'_, PyAny>,
+    input: &'py Bound<'_, PyAny>,
+    mad_k: f64,
+  ) -> PyResult<()> {
+    // 1. get context
+    #[allow(unused_mut)]
+    let mut ctx = ctx(py);
+    // 2. check input type and do dispatch
+    if let Some((mut r, input)) = r
+      .extract::<PyReadwriteArray1<'py, f64>>()
+      .ok()
+      .zip(input.extract::<PyReadonlyArray1<'py, f64>>().ok())
+    {
+      // input is f64 array
+      let mut r = r.as_array_mut();
+      let r = r
+        .as_slice_mut()
+        .ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+      let input = input.as_array();
+      let input = input
+        .as_slice()
+        .ok_or(PyValueError::new_err("failed to get slice"))?;
+      ta_cc_winsorize_mad(&ctx, r, input, mad_k).map_err(|e| e.into())
+    } else if let Some((mut r, input)) = r
+      .extract::<PyReadwriteArray1<'py, f32>>()
+      .ok()
+      .zip(input.extract::<PyReadonlyArray1<'py, f32>>().ok())
+    {
+      // input is f32 array
+      let mut r = r.as_array_mut();
+      let r = r
+        .as_slice_mut()
+        .ok_or(PyValueError::new_err("invalid input"))?;
+      let input = input.as_array();
+      let input = input
+        .as_slice()
+        .ok_or(PyValueError::new_err("invalid input"))?;
+      ta_cc_winsorize_mad(&ctx, r, input, mad_k as f32).map_err(|e| e.into())
+    } else if let Some((r, input)) = r.cast::<PyList>().ok().zip(input.cast::<PyList>().ok()) {
+      // input is list of arrays
+      // each array is a group, ensure groups is set to 1
+      ctx._groups = 1;
+      if r.len() != input.len() {
+        return Err(PyValueError::new_err("length mismatch"));
+      }
+      // check if each array is f64 array
+      if let Some((mut r, input)) = r
+        .extract::<Vec<PyReadwriteArray1<'py, f64>>>()
+        .ok()
+        .zip(input.extract::<Vec<PyReadonlyArray1<'py, f64>>>().ok())
+      {
+        let r = r.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();
+        let input = input.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let mut _r = vec![];
+        r.into_par_iter()
+          .zip(input.into_par_iter())
+          .map(|(mut out, input)| {
+            let r = out.as_slice_mut();
+            let input = input.as_slice();
+            if let Some((r, input)) = r.zip(input) {
+              ta_cc_winsorize_mad(&ctx, r, input, mad_k).map_err(|e| e.into())
+            } else {
+              Err(PyValueError::new_err("invalid input"))
+            }
+          })
+          .collect_into_vec(&mut _r);
+        match _r.into_iter().find(|x| x.is_err()) {
+          Some(e) => e,
+          None => Ok(()),
+        }
+      // check if each array is f32 array
+      } else if let Some((mut r, input)) = r
+        .extract::<Vec<PyReadwriteArray1<'py, f32>>>()
+        .ok()
+        .zip(input.extract::<Vec<PyReadonlyArray1<'py, f32>>>().ok())
+      {
+        let r = r.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();
+        let input = input.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let mut _r = vec![];
+        r.into_par_iter()
+          .zip(input.into_par_iter())
+          .map(|(mut out, input)| {
+            let r = out.as_slice_mut();
+            let input = input.as_slice();
+            if let Some((r, input)) = r.zip(input) {
+              ta_cc_winsorize_mad(&ctx, r, input, mad_k as f32).map_err(|e| e.into())
+            } else {
+              Err(PyValueError::new_err("invalid input"))
+            }
+          })
+          .collect_into_vec(&mut _r);
+        match _r.into_iter().find(|x| x.is_err()) {
+          Some(e) => e,
+          None => Ok(()),
+        }
+      } else {
+        Err(PyValueError::new_err("invalid input"))
+      }
+    } else {
+      Err(PyValueError::new_err("invalid input"))
+    }
+  }
+  /// Cross-sectional percentile winsorization across groups at each time step.
+  #[pyfunction]
+  fn cc_winsorize_pct<'py>(
+    py: Python<'py>,
+    r: &'py Bound<'_, PyAny>,
+    input: &'py Bound<'_, PyAny>,
+    pct_low: f64,
+    pct_high: f64,
+  ) -> PyResult<()> {
+    // 1. get context
+    #[allow(unused_mut)]
+    let mut ctx = ctx(py);
+    // 2. check input type and do dispatch
+    if let Some((mut r, input)) = r
+      .extract::<PyReadwriteArray1<'py, f64>>()
+      .ok()
+      .zip(input.extract::<PyReadonlyArray1<'py, f64>>().ok())
+    {
+      // input is f64 array
+      let mut r = r.as_array_mut();
+      let r = r
+        .as_slice_mut()
+        .ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+      let input = input.as_array();
+      let input = input
+        .as_slice()
+        .ok_or(PyValueError::new_err("failed to get slice"))?;
+      ta_cc_winsorize_pct(&ctx, r, input, pct_low, pct_high).map_err(|e| e.into())
+    } else if let Some((mut r, input)) = r
+      .extract::<PyReadwriteArray1<'py, f32>>()
+      .ok()
+      .zip(input.extract::<PyReadonlyArray1<'py, f32>>().ok())
+    {
+      // input is f32 array
+      let mut r = r.as_array_mut();
+      let r = r
+        .as_slice_mut()
+        .ok_or(PyValueError::new_err("invalid input"))?;
+      let input = input.as_array();
+      let input = input
+        .as_slice()
+        .ok_or(PyValueError::new_err("invalid input"))?;
+      ta_cc_winsorize_pct(&ctx, r, input, pct_low as f32, pct_high as f32).map_err(|e| e.into())
+    } else if let Some((r, input)) = r.cast::<PyList>().ok().zip(input.cast::<PyList>().ok()) {
+      // input is list of arrays
+      // each array is a group, ensure groups is set to 1
+      ctx._groups = 1;
+      if r.len() != input.len() {
+        return Err(PyValueError::new_err("length mismatch"));
+      }
+      // check if each array is f64 array
+      if let Some((mut r, input)) = r
+        .extract::<Vec<PyReadwriteArray1<'py, f64>>>()
+        .ok()
+        .zip(input.extract::<Vec<PyReadonlyArray1<'py, f64>>>().ok())
+      {
+        let r = r.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();
+        let input = input.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let mut _r = vec![];
+        r.into_par_iter()
+          .zip(input.into_par_iter())
+          .map(|(mut out, input)| {
+            let r = out.as_slice_mut();
+            let input = input.as_slice();
+            if let Some((r, input)) = r.zip(input) {
+              ta_cc_winsorize_pct(&ctx, r, input, pct_low, pct_high).map_err(|e| e.into())
+            } else {
+              Err(PyValueError::new_err("invalid input"))
+            }
+          })
+          .collect_into_vec(&mut _r);
+        match _r.into_iter().find(|x| x.is_err()) {
+          Some(e) => e,
+          None => Ok(()),
+        }
+      // check if each array is f32 array
+      } else if let Some((mut r, input)) = r
+        .extract::<Vec<PyReadwriteArray1<'py, f32>>>()
+        .ok()
+        .zip(input.extract::<Vec<PyReadonlyArray1<'py, f32>>>().ok())
+      {
+        let r = r.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();
+        let input = input.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let mut _r = vec![];
+        r.into_par_iter()
+          .zip(input.into_par_iter())
+          .map(|(mut out, input)| {
+            let r = out.as_slice_mut();
+            let input = input.as_slice();
+            if let Some((r, input)) = r.zip(input) {
+              ta_cc_winsorize_pct(&ctx, r, input, pct_low as f32, pct_high as f32).map_err(|e| e.into())
+            } else {
+              Err(PyValueError::new_err("invalid input"))
+            }
+          })
+          .collect_into_vec(&mut _r);
+        match _r.into_iter().find(|x| x.is_err()) {
+          Some(e) => e,
+          None => Ok(()),
+        }
+      } else {
+        Err(PyValueError::new_err("invalid input"))
+      }
+    } else {
+      Err(PyValueError::new_err("invalid input"))
+    }
+  }
+  /// Cross-sectional standard-deviation (sigma) winsorization across groups at each time step.
+  #[pyfunction]
+  fn cc_winsorize_sigma<'py>(
+    py: Python<'py>,
+    r: &'py Bound<'_, PyAny>,
+    input: &'py Bound<'_, PyAny>,
+    sigma_k: f64,
+  ) -> PyResult<()> {
+    // 1. get context
+    #[allow(unused_mut)]
+    let mut ctx = ctx(py);
+    // 2. check input type and do dispatch
+    if let Some((mut r, input)) = r
+      .extract::<PyReadwriteArray1<'py, f64>>()
+      .ok()
+      .zip(input.extract::<PyReadonlyArray1<'py, f64>>().ok())
+    {
+      // input is f64 array
+      let mut r = r.as_array_mut();
+      let r = r
+        .as_slice_mut()
+        .ok_or(PyValueError::new_err("failed to get mutable slice"))?;
+      let input = input.as_array();
+      let input = input
+        .as_slice()
+        .ok_or(PyValueError::new_err("failed to get slice"))?;
+      ta_cc_winsorize_sigma(&ctx, r, input, sigma_k).map_err(|e| e.into())
+    } else if let Some((mut r, input)) = r
+      .extract::<PyReadwriteArray1<'py, f32>>()
+      .ok()
+      .zip(input.extract::<PyReadonlyArray1<'py, f32>>().ok())
+    {
+      // input is f32 array
+      let mut r = r.as_array_mut();
+      let r = r
+        .as_slice_mut()
+        .ok_or(PyValueError::new_err("invalid input"))?;
+      let input = input.as_array();
+      let input = input
+        .as_slice()
+        .ok_or(PyValueError::new_err("invalid input"))?;
+      ta_cc_winsorize_sigma(&ctx, r, input, sigma_k as f32).map_err(|e| e.into())
+    } else if let Some((r, input)) = r.cast::<PyList>().ok().zip(input.cast::<PyList>().ok()) {
+      // input is list of arrays
+      // each array is a group, ensure groups is set to 1
+      ctx._groups = 1;
+      if r.len() != input.len() {
+        return Err(PyValueError::new_err("length mismatch"));
+      }
+      // check if each array is f64 array
+      if let Some((mut r, input)) = r
+        .extract::<Vec<PyReadwriteArray1<'py, f64>>>()
+        .ok()
+        .zip(input.extract::<Vec<PyReadonlyArray1<'py, f64>>>().ok())
+      {
+        let r = r.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();
+        let input = input.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let mut _r = vec![];
+        r.into_par_iter()
+          .zip(input.into_par_iter())
+          .map(|(mut out, input)| {
+            let r = out.as_slice_mut();
+            let input = input.as_slice();
+            if let Some((r, input)) = r.zip(input) {
+              ta_cc_winsorize_sigma(&ctx, r, input, sigma_k).map_err(|e| e.into())
+            } else {
+              Err(PyValueError::new_err("invalid input"))
+            }
+          })
+          .collect_into_vec(&mut _r);
+        match _r.into_iter().find(|x| x.is_err()) {
+          Some(e) => e,
+          None => Ok(()),
+        }
+      // check if each array is f32 array
+      } else if let Some((mut r, input)) = r
+        .extract::<Vec<PyReadwriteArray1<'py, f32>>>()
+        .ok()
+        .zip(input.extract::<Vec<PyReadonlyArray1<'py, f32>>>().ok())
+      {
+        let r = r.iter_mut().map(|x| x.as_array_mut()).collect::<Vec<_>>();
+        let input = input.iter().map(|x| x.as_array()).collect::<Vec<_>>();
+        let mut _r = vec![];
+        r.into_par_iter()
+          .zip(input.into_par_iter())
+          .map(|(mut out, input)| {
+            let r = out.as_slice_mut();
+            let input = input.as_slice();
+            if let Some((r, input)) = r.zip(input) {
+              ta_cc_winsorize_sigma(&ctx, r, input, sigma_k as f32).map_err(|e| e.into())
+            } else {
+              Err(PyValueError::new_err("invalid input"))
+            }
+          })
+          .collect_into_vec(&mut _r);
+        match _r.into_iter().find(|x| x.is_err()) {
+          Some(e) => e,
+          None => Ok(()),
+        }
+      } else {
+        Err(PyValueError::new_err("invalid input"))
+      }
+    } else {
+      Err(PyValueError::new_err("invalid input"))
+    }
+  }
   /// Calculate cross-sectional Z-Score across groups at each time step
   #[pyfunction]
   fn cc_zscore<'py>(
@@ -6409,6 +6728,9 @@ pub fn register_functions(m: &Bound<'_, PyModule>) -> PyResult<()> {
   m.add_function(wrap_pyfunction!(bw_split, m)?)?;
   m.add_function(wrap_pyfunction!(bw_split_factor, m)?)?;
   m.add_function(wrap_pyfunction!(cc_rank, m)?)?;
+  m.add_function(wrap_pyfunction!(cc_winsorize_mad, m)?)?;
+  m.add_function(wrap_pyfunction!(cc_winsorize_pct, m)?)?;
+  m.add_function(wrap_pyfunction!(cc_winsorize_sigma, m)?)?;
   m.add_function(wrap_pyfunction!(cc_zscore, m)?)?;
   m.add_function(wrap_pyfunction!(corr, m)?)?;
   m.add_function(wrap_pyfunction!(corr2, m)?)?;

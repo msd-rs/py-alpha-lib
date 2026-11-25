@@ -29,6 +29,7 @@ mod split;
 mod stats;
 mod stddev;
 mod sum;
+mod winsorize;
 mod zscore;
 
 pub use alpha::*;
@@ -58,6 +59,7 @@ pub use split::*;
 pub use stats::*;
 pub use stddev::*;
 pub use sum::*;
+pub use winsorize::*;
 pub use zscore::*;
 
 pub use num_traits::Float;

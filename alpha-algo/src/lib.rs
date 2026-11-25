@@ -1,4 +1,5 @@
 mod algo;
+pub mod factor;
 mod join;
 pub mod sim;
 

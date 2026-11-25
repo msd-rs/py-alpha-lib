@@ -6,6 +6,7 @@ use std::cell::Cell;
 use alpha_algo::Context;
 use pyo3::prelude::*;
 
+mod factor;
 mod sim;
 
 thread_local! {
@@ -216,6 +217,7 @@ fn _algo(m: &Bound<'_, PyModule>) -> PyResult<()> {
   m.add_function(wrap_pyfunction!(get_ctx, m)?)?;
   m.add_function(wrap_pyfunction!(reset_ctx, m)?)?;
   register_functions(m)?;
+  factor::register_factor(m)?;
   sim::register_sim(m)?;
   Ok(())
 }

@@ -300,6 +300,71 @@ def CC_RANK[A: np.ndarray | list[np.ndarray]](
     _algo.cc_rank(r, input)
     return r
 
+def CC_WINSORIZE_MAD[A: np.ndarray | list[np.ndarray]](
+  input: A, mad_k: float
+) -> A:
+  """
+  Cross-sectional MAD winsorization across groups at each time step.
+  
+  Clips finite values in each cross-section to
+  ``[median - 1.4826 * mad_k * MAD, median + 1.4826 * mad_k * MAD]``.
+  Zero-MAD cross-sections (``1.4826 * mad_k * MAD <= 1e-12``) preserve finite
+  values unchanged. Non-finite inputs (NaN/Inf) produce NaN output.
+  """
+  if isinstance(input, list):
+    input = [_to_f64(x) for x in input]
+    r = [np.empty_like(x) for x in input]
+    _algo.cc_winsorize_mad(r, input, mad_k)
+    return r
+  else:
+    input = _to_f64(input)
+    r = np.empty_like(input)
+    _algo.cc_winsorize_mad(r, input, mad_k)
+    return r
+
+def CC_WINSORIZE_PCT[A: np.ndarray | list[np.ndarray]](
+  input: A, pct_low: float, pct_high: float
+) -> A:
+  """
+  Cross-sectional percentile winsorization across groups at each time step.
+  
+  Clips finite values in each cross-section to the linear-interpolated
+  ``[pct_low, pct_high]`` quantiles (``0.0 <= pct_low < pct_high <= 1.0``).
+  Non-finite inputs (NaN/Inf) produce NaN output.
+  """
+  if isinstance(input, list):
+    input = [_to_f64(x) for x in input]
+    r = [np.empty_like(x) for x in input]
+    _algo.cc_winsorize_pct(r, input, pct_low, pct_high)
+    return r
+  else:
+    input = _to_f64(input)
+    r = np.empty_like(input)
+    _algo.cc_winsorize_pct(r, input, pct_low, pct_high)
+    return r
+
+def CC_WINSORIZE_SIGMA[A: np.ndarray | list[np.ndarray]](
+  input: A, sigma_k: float
+) -> A:
+  """
+  Cross-sectional standard-deviation (sigma) winsorization across groups at each time step.
+  
+  Clips finite values in each cross-section to
+  ``[mean - sigma_k * std, mean + sigma_k * std]`` using population standard
+  deviation (``ddof = 0``). Degenerate cross-sections (``cnt <= 1`` or
+  ``std <= 1e-12``) preserve finite values unchanged. Non-finite inputs produce NaN.
+  """
+  if isinstance(input, list):
+    input = [_to_f64(x) for x in input]
+    r = [np.empty_like(x) for x in input]
+    _algo.cc_winsorize_sigma(r, input, sigma_k)
+    return r
+  else:
+    input = _to_f64(input)
+    r = np.empty_like(input)
+    _algo.cc_winsorize_sigma(r, input, sigma_k)
+    return r
+
 def CC_ZSCORE[A: np.ndarray | list[np.ndarray]](
   input: A
 ) -> A:
@@ -1642,6 +1707,9 @@ __all__ = [
   "BW_SPLIT",
   "BW_SPLIT_FACTOR",
   "CC_RANK",
+  "CC_WINSORIZE_MAD",
+  "CC_WINSORIZE_PCT",
+  "CC_WINSORIZE_SIGMA",
   "CC_ZSCORE",
   "CORR",
   "CORR2",
