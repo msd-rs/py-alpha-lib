@@ -1,5 +1,10 @@
 # ChangeLog
 
+## [0.5.3] - 2026-11-26
+
+- Fix double adjustment when transfer_shares
+
+
 ## [0.5.2] - 2026-11-25
 
 ## Added:
